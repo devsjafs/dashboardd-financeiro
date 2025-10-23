@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Client, ClientStatus, ClientSituation } from "@/types/client";
+import { Client, ClientStatus, ServiceType } from "@/types/client";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = z.object({
   codigo: z.string().min(1, "Código é obrigatório"),
@@ -35,10 +36,11 @@ const formSchema = z.object({
   valorSmart: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorApoio: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorContabilidade: z.coerce.number().min(0, "Valor deve ser positivo"),
+  valorPersonalite: z.coerce.number().min(0, "Valor deve ser positivo"),
   vencimento: z.coerce.number().min(1).max(31, "Dia inválido"),
   inicioCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)"),
   ultimaCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)").optional().or(z.literal("")),
-  situacao: z.enum(["mes-vencido", "mes-corrente", "anual"]),
+  services: z.array(z.enum(["smart", "apoio", "contabilidade", "personalite"])).min(1, "Selecione pelo menos um serviço"),
   status: z.enum(["ativo", "inativo", "sem-faturamento", "ex-cliente", "suspenso"]),
 });
 
@@ -60,10 +62,11 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       valorSmart: client?.valorMensalidade.smart || 0,
       valorApoio: client?.valorMensalidade.apoio || 0,
       valorContabilidade: client?.valorMensalidade.contabilidade || 0,
+      valorPersonalite: client?.valorMensalidade.personalite || 0,
       vencimento: client?.vencimento || 10,
       inicioCompetencia: client?.inicioCompetencia || "",
       ultimaCompetencia: client?.ultimaCompetencia || "",
-      situacao: client?.situacao || "mes-corrente",
+      services: client?.services || [],
       status: client?.status || "ativo",
     },
   });
@@ -78,11 +81,12 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         smart: values.valorSmart,
         apoio: values.valorApoio,
         contabilidade: values.valorContabilidade,
+        personalite: values.valorPersonalite,
       },
       vencimento: values.vencimento,
       inicioCompetencia: values.inicioCompetencia,
       ultimaCompetencia: values.ultimaCompetencia || undefined,
-      situacao: values.situacao as ClientSituation,
+      services: values.services as ServiceType[],
       status: values.status as ClientStatus,
     });
     form.reset();
@@ -202,6 +206,20 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
 
               <FormField
                 control={form.control}
+                name="valorPersonalite"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Personalite (R$)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="vencimento"
                 render={({ field }) => (
                   <FormItem>
@@ -244,22 +262,38 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
 
               <FormField
                 control={form.control}
-                name="situacao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Situação</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="mes-vencido">Mês Vencido</SelectItem>
-                        <SelectItem value="mes-corrente">Mês Corrente</SelectItem>
-                        <SelectItem value="anual">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                name="services"
+                render={() => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>Serviços</FormLabel>
+                    <div className="flex flex-wrap gap-4">
+                      {(['smart', 'apoio', 'contabilidade', 'personalite'] as const).map((service) => (
+                        <FormField
+                          key={service}
+                          control={form.control}
+                          name="services"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(service)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, service])
+                                      : field.onChange(
+                                          field.value?.filter((value) => value !== service)
+                                        );
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal capitalize cursor-pointer">
+                                {service}
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -269,7 +303,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                 control={form.control}
                 name="status"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-2">
                     <FormLabel>Status</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>

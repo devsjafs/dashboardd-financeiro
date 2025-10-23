@@ -9,10 +9,11 @@ export const exportToCSV = (clients: Client[]) => {
     "Valor Smart",
     "Valor Apoio",
     "Valor Contabilidade",
+    "Valor Personalite",
     "Vencimento",
     "Início Competência",
     "Última Competência",
-    "Situação",
+    "Serviços",
     "Status",
   ];
 
@@ -24,10 +25,11 @@ export const exportToCSV = (clients: Client[]) => {
     client.valorMensalidade.smart,
     client.valorMensalidade.apoio,
     client.valorMensalidade.contabilidade,
+    client.valorMensalidade.personalite,
     client.vencimento,
     client.inicioCompetencia,
     client.ultimaCompetencia || "",
-    client.situacao,
+    client.services.join(";"),
     client.status,
   ]);
 
@@ -70,12 +72,13 @@ export const importFromCSV = (file: File): Promise<Omit<Client, "id" | "createdA
               smart: parseFloat(cleanValues[4]) || 0,
               apoio: parseFloat(cleanValues[5]) || 0,
               contabilidade: parseFloat(cleanValues[6]) || 0,
+              personalite: parseFloat(cleanValues[7]) || 0,
             },
-            vencimento: parseInt(cleanValues[7]) || 10,
-            inicioCompetencia: cleanValues[8],
-            ultimaCompetencia: cleanValues[9] || undefined,
-            situacao: cleanValues[10] as Client["situacao"],
-            status: cleanValues[11] as Client["status"],
+            vencimento: parseInt(cleanValues[8]) || 10,
+            inicioCompetencia: cleanValues[9],
+            ultimaCompetencia: cleanValues[10] || undefined,
+            services: cleanValues[11] ? cleanValues[11].split(";").filter(s => s) as Client["services"] : [],
+            status: cleanValues[12] as Client["status"],
           };
         });
 

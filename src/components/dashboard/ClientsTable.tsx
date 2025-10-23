@@ -27,10 +27,11 @@ const statusColors = {
   'suspenso': 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-const situacaoColors = {
-  'mes-vencido': 'bg-destructive/10 text-destructive border-destructive/20',
-  'mes-corrente': 'bg-success/10 text-success border-success/20',
-  'anual': 'bg-primary/10 text-primary border-primary/20',
+const serviceColors = {
+  'smart': 'bg-primary/10 text-primary border-primary/20',
+  'apoio': 'bg-success/10 text-success border-success/20',
+  'contabilidade': 'bg-warning/10 text-warning border-warning/20',
+  'personalite': 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
@@ -85,7 +86,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
               <TableHead className="font-semibold">CNPJ</TableHead>
               <TableHead className="font-semibold text-right">Mensalidade</TableHead>
               <TableHead className="font-semibold">Vencimento</TableHead>
-              <TableHead className="font-semibold">Situação</TableHead>
+              <TableHead className="font-semibold">Serviços</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold text-right">Ações</TableHead>
             </TableRow>
@@ -93,7 +94,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
           <TableBody>
             {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Nenhum cliente encontrado
                 </TableCell>
               </TableRow>
@@ -109,9 +110,13 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                   </TableCell>
                   <TableCell>Dia {client.vencimento}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={situacaoColors[client.situacao]}>
-                      {client.situacao.replace('-', ' ')}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {client.services.map((service) => (
+                        <Badge key={service} variant="outline" className={serviceColors[service]}>
+                          {service}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={statusColors[client.status]}>

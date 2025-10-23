@@ -7,68 +7,27 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { exportToCSV, importFromCSV } from "@/utils/exportImport";
 import {
-  Users,
+  Briefcase,
   DollarSign,
-  AlertCircle,
-  TrendingUp,
   Plus,
   Download,
   Upload,
 } from "lucide-react";
 
-const mockClients: Client[] = [
-  {
-    id: "1",
-    codigo: "CLI001",
-    nomeFantasia: "Tech Solutions",
-    razaoSocial: "Tech Solutions Ltda",
-    cnpj: "12345678000190",
-    valorMensalidade: { smart: 500, apoio: 300, contabilidade: 800 },
-    vencimento: 10,
-    inicioCompetencia: "2024-01",
-    ultimaCompetencia: "2024-12",
-    situacao: "mes-corrente",
-    status: "ativo",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    codigo: "CLI002",
-    nomeFantasia: "Comercial ABC",
-    razaoSocial: "Comercial ABC S.A.",
-    cnpj: "98765432000110",
-    valorMensalidade: { smart: 0, apoio: 200, contabilidade: 600 },
-    vencimento: 5,
-    inicioCompetencia: "2023-06",
-    ultimaCompetencia: "2024-11",
-    situacao: "mes-vencido",
-    status: "ativo",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 const Index = () => {
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [clients, setClients] = useState<Client[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const activeClients = clients.filter((c) => c.status === "ativo");
-  const overDueClients = clients.filter(
-    (c) => c.situacao === "mes-vencido" && c.status === "ativo"
-  );
 
-  const totalRevenue = activeClients.reduce(
-    (sum, client) =>
-      sum +
-      client.valorMensalidade.smart +
-      client.valorMensalidade.apoio +
-      client.valorMensalidade.contabilidade,
-    0
-  );
+  const smartRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.smart, 0);
+  const apoioRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.apoio, 0);
+  const contabilRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.contabilidade, 0);
+  const personaliteRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.personalite, 0);
+  const totalRevenue = smartRevenue + apoioRevenue + contabilRevenue + personaliteRevenue;
 
   const handleSaveClient = (clientData: Omit<Client, "id" | "createdAt" | "updatedAt">) => {
     if (editingClient) {
@@ -201,36 +160,51 @@ const Index = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <StatsCard
-            title="Clientes Ativos"
-            value={activeClients.length}
-            icon={Users}
+            title="Smart"
+            value={new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(smartRevenue)}
+            icon={Briefcase}
             iconColor="text-primary"
-            trend={{ value: 12, isPositive: true }}
           />
           <StatsCard
-            title="Receita Mensal"
+            title="Apoio"
+            value={new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(apoioRevenue)}
+            icon={Briefcase}
+            iconColor="text-primary"
+          />
+          <StatsCard
+            title="Contábil"
+            value={new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(contabilRevenue)}
+            icon={Briefcase}
+            iconColor="text-primary"
+          />
+          <StatsCard
+            title="Personalite"
+            value={new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }).format(personaliteRevenue)}
+            icon={Briefcase}
+            iconColor="text-primary"
+          />
+          <StatsCard
+            title="Receita Total"
             value={new Intl.NumberFormat("pt-BR", {
               style: "currency",
               currency: "BRL",
             }).format(totalRevenue)}
             icon={DollarSign}
             iconColor="text-success"
-            trend={{ value: 8, isPositive: true }}
-          />
-          <StatsCard
-            title="Clientes Vencidos"
-            value={overDueClients.length}
-            icon={AlertCircle}
-            iconColor="text-destructive"
-          />
-          <StatsCard
-            title="Total de Clientes"
-            value={clients.length}
-            icon={TrendingUp}
-            iconColor="text-warning"
-            trend={{ value: 5, isPositive: true }}
           />
         </div>
 
