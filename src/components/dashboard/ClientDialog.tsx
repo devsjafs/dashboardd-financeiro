@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Client, ClientStatus, ServiceType } from "@/types/client";
+import { Client, ClientStatus, ServiceType, ClientSituacao } from "@/types/client";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,7 @@ const formSchema = z.object({
   inicioCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)"),
   ultimaCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)").optional().or(z.literal("")),
   services: z.array(z.enum(["smart", "apoio", "contabilidade", "personalite"])).min(1, "Selecione pelo menos um serviço"),
+  situacao: z.enum(["mes-vencido", "mes-corrente", "anual"]),
   status: z.enum(["ativo", "inativo", "sem-faturamento", "ex-cliente", "suspenso"]),
 });
 
@@ -67,6 +68,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       inicioCompetencia: client?.inicioCompetencia || "",
       ultimaCompetencia: client?.ultimaCompetencia || "",
       services: client?.services || [],
+      situacao: client?.situacao || "mes-corrente",
       status: client?.status || "ativo",
     },
   });
@@ -87,6 +89,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       inicioCompetencia: values.inicioCompetencia,
       ultimaCompetencia: values.ultimaCompetencia || undefined,
       services: values.services as ServiceType[],
+      situacao: values.situacao as ClientSituacao,
       status: values.status as ClientStatus,
     });
     form.reset();
@@ -301,9 +304,32 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
 
               <FormField
                 control={form.control}
+                name="situacao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Situação</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="mes-vencido">Mês Vencido</SelectItem>
+                        <SelectItem value="mes-corrente">Mês Corrente</SelectItem>
+                        <SelectItem value="anual">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="status"
                 render={({ field }) => (
-                  <FormItem className="col-span-2">
+                  <FormItem>
                     <FormLabel>Status</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>

@@ -2,6 +2,8 @@ export type ClientStatus = 'ativo' | 'inativo' | 'sem-faturamento' | 'ex-cliente
 
 export type ServiceType = 'smart' | 'apoio' | 'contabilidade' | 'personalite';
 
+export type ClientSituacao = 'mes-vencido' | 'mes-corrente' | 'anual';
+
 export interface MonthlyValue {
   smart: number;
   apoio: number;
@@ -20,6 +22,7 @@ export interface Client {
   inicioCompetencia: string; // formato: YYYY-MM
   ultimaCompetencia?: string; // formato: YYYY-MM
   services: ServiceType[];
+  situacao: ClientSituacao;
   status: ClientStatus;
   createdAt: string;
   updatedAt: string;

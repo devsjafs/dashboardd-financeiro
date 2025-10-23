@@ -14,6 +14,7 @@ export const exportToCSV = (clients: Client[]) => {
     "Início Competência",
     "Última Competência",
     "Serviços",
+    "Situação",
     "Status",
   ];
 
@@ -30,6 +31,7 @@ export const exportToCSV = (clients: Client[]) => {
     client.inicioCompetencia,
     client.ultimaCompetencia || "",
     client.services.join(";"),
+    client.situacao,
     client.status,
   ]);
 
@@ -78,7 +80,8 @@ export const importFromCSV = (file: File): Promise<Omit<Client, "id" | "createdA
             inicioCompetencia: cleanValues[9],
             ultimaCompetencia: cleanValues[10] || undefined,
             services: cleanValues[11] ? cleanValues[11].split(";").filter(s => s) as Client["services"] : [],
-            status: cleanValues[12] as Client["status"],
+            situacao: (cleanValues[12] || 'mes-corrente') as Client["situacao"],
+            status: cleanValues[13] as Client["status"],
           };
         });
 

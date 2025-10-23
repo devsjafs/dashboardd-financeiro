@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Pencil, Trash2 } from "lucide-react";
+import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown } from "lucide-react";
 
 interface ClientsTableProps {
   clients: Client[];
@@ -27,11 +27,33 @@ const statusColors = {
   'suspenso': 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-const serviceColors = {
-  'smart': 'bg-primary/10 text-primary border-primary/20',
-  'apoio': 'bg-success/10 text-success border-success/20',
-  'contabilidade': 'bg-warning/10 text-warning border-warning/20',
-  'personalite': 'bg-destructive/10 text-destructive border-destructive/20',
+const serviceConfig = {
+  smart: {
+    icon: Zap,
+    color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    label: "Smart"
+  },
+  apoio: {
+    icon: Briefcase,
+    color: "bg-green-500/10 text-green-500 border-green-500/20",
+    label: "Apoio"
+  },
+  contabilidade: {
+    icon: Calculator,
+    color: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+    label: "Contábil"
+  },
+  personalite: {
+    icon: Crown,
+    color: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    label: "Personalite"
+  },
+};
+
+const situacaoLabels = {
+  'mes-vencido': 'Mês Vencido',
+  'mes-corrente': 'Mês Corrente',
+  'anual': 'Anual'
 };
 
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
@@ -87,6 +109,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
               <TableHead className="font-semibold text-right">Mensalidade</TableHead>
               <TableHead className="font-semibold">Vencimento</TableHead>
               <TableHead className="font-semibold">Serviços</TableHead>
+              <TableHead className="font-semibold">Situação</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold text-right">Ações</TableHead>
             </TableRow>
@@ -94,7 +117,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
           <TableBody>
             {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   Nenhum cliente encontrado
                 </TableCell>
               </TableRow>
@@ -111,12 +134,26 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                   <TableCell>Dia {client.vencimento}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {client.services.map((service) => (
-                        <Badge key={service} variant="outline" className={serviceColors[service]}>
-                          {service}
-                        </Badge>
-                      ))}
+                      {client.services.map((service) => {
+                        const config = serviceConfig[service];
+                        const Icon = config.icon;
+                        return (
+                          <Badge
+                            key={service}
+                            variant="outline"
+                            className={`${config.color} flex items-center gap-1`}
+                          >
+                            <Icon className="h-3 w-3" />
+                            {config.label}
+                          </Badge>
+                        );
+                      })}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {situacaoLabels[client.situacao]}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={statusColors[client.status]}>
