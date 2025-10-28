@@ -18,11 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown } from "lucide-react";
+import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, History, FileText } from "lucide-react";
+import { ClientHistoryDialog } from "./ClientHistoryDialog";
+import { ClientNotesDialog } from "./ClientNotesDialog";
 
 interface ClientsTableProps {
   clients: Client[];
-  onEdit: (client: Client) => void;
+  onEdit: (clientId: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -68,6 +70,9 @@ type SortOption = "codigo" | "nome-az" | "nome-za" | "valor-asc" | "valor-desc";
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("codigo");
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const filteredAndSortedClients = clients
     .filter((client) => {
@@ -201,12 +206,37 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => onEdit(client)}
+                        onClick={() => {
+                          setSelectedClient(client);
+                          setHistoryDialogOpen(true);
+                        }}
+                        className="hover:bg-blue-500/10 hover:text-blue-500"
+                        title="Histórico"
+                      >
+                        <History className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedClient(client);
+                          setNotesDialogOpen(true);
+                        }}
+                        className="hover:bg-amber-500/10 hover:text-amber-500"
+                        title="Anotações"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(client.id)}
                         className="hover:bg-primary/10 hover:text-primary"
+                        title="Editar"
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
@@ -215,6 +245,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                         size="icon"
                         onClick={() => onDelete(client.id)}
                         className="hover:bg-destructive/10 hover:text-destructive"
+                        title="Excluir"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -226,6 +257,23 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {selectedClient && (
+        <>
+          <ClientHistoryDialog
+            clientId={selectedClient.id}
+            clientName={selectedClient.nomeFantasia}
+            open={historyDialogOpen}
+            onOpenChange={setHistoryDialogOpen}
+          />
+          <ClientNotesDialog
+            clientId={selectedClient.id}
+            clientName={selectedClient.nomeFantasia}
+            open={notesDialogOpen}
+            onOpenChange={setNotesDialogOpen}
+          />
+        </>
+      )}
     </div>
   );
 }

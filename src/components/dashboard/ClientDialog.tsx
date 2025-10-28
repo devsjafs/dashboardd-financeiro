@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import * as z from "zod";
 import { Client, ClientStatus, ServiceType, ClientSituacao } from "@/types/client";
 import {
@@ -49,32 +50,70 @@ interface ClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   client?: Client;
-  onSave: (client: Omit<Client, "id" | "createdAt" | "updatedAt">) => void;
+  onSave: (client: Omit<Client, "id" | "createdAt" | "updatedAt">) => Promise<void>;
 }
 
 export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialogProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      codigo: client?.codigo || "",
-      nomeFantasia: client?.nomeFantasia || "",
-      razaoSocial: client?.razaoSocial || "",
-      cnpj: client?.cnpj || "",
-      valorSmart: client?.valorMensalidade.smart || 0,
-      valorApoio: client?.valorMensalidade.apoio || 0,
-      valorContabilidade: client?.valorMensalidade.contabilidade || 0,
-      valorPersonalite: client?.valorMensalidade.personalite || 0,
-      vencimento: client?.vencimento || 10,
-      inicioCompetencia: client?.inicioCompetencia || "",
-      ultimaCompetencia: client?.ultimaCompetencia || "",
-      services: client?.services || [],
-      situacao: client?.situacao || "mes-corrente",
-      status: client?.status || "ativo",
+      codigo: "",
+      nomeFantasia: "",
+      razaoSocial: "",
+      cnpj: "",
+      valorSmart: 0,
+      valorApoio: 0,
+      valorContabilidade: 0,
+      valorPersonalite: 0,
+      vencimento: 10,
+      inicioCompetencia: "",
+      ultimaCompetencia: "",
+      services: [],
+      situacao: "mes-corrente",
+      status: "ativo",
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave({
+  useEffect(() => {
+    if (client) {
+      form.reset({
+        codigo: client.codigo,
+        nomeFantasia: client.nomeFantasia,
+        razaoSocial: client.razaoSocial,
+        cnpj: client.cnpj,
+        valorSmart: client.valorMensalidade.smart,
+        valorApoio: client.valorMensalidade.apoio,
+        valorContabilidade: client.valorMensalidade.contabilidade,
+        valorPersonalite: client.valorMensalidade.personalite,
+        vencimento: client.vencimento,
+        inicioCompetencia: client.inicioCompetencia,
+        ultimaCompetencia: client.ultimaCompetencia || "",
+        services: client.services,
+        situacao: client.situacao,
+        status: client.status,
+      });
+    } else {
+      form.reset({
+        codigo: "",
+        nomeFantasia: "",
+        razaoSocial: "",
+        cnpj: "",
+        valorSmart: 0,
+        valorApoio: 0,
+        valorContabilidade: 0,
+        valorPersonalite: 0,
+        vencimento: 10,
+        inicioCompetencia: "",
+        ultimaCompetencia: "",
+        services: [],
+        situacao: "mes-corrente",
+        status: "ativo",
+      });
+    }
+  }, [client, form]);
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    await onSave({
       codigo: values.codigo,
       nomeFantasia: values.nomeFantasia,
       razaoSocial: values.razaoSocial,
@@ -93,7 +132,6 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       status: values.status as ClientStatus,
     });
     form.reset();
-    onOpenChange(false);
   };
 
   return (

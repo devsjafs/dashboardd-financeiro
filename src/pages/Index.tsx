@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
-import { Client, ServiceType } from "@/types/client";
+import { ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useClients } from "@/hooks/useClients";
 import { exportToCSV, importFromCSV } from "@/utils/exportImport";
 import {
   Zap,
@@ -16,15 +17,16 @@ import {
   Plus,
   Download,
   Upload,
+  Loader2,
 } from "lucide-react";
 
 const Index = () => {
-  const [clients, setClients] = useState<Client[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | undefined>();
+  const [editingClientId, setEditingClientId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<ServiceType | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
 
   // Apenas clientes ativos (excluindo ex-clientes)
   const activeClients = clients.filter((c) => c.status === "ativo");
@@ -40,52 +42,15 @@ const Index = () => {
     ? clients 
     : clients.filter(c => c.services.includes(activeTab));
 
-  const handleSaveClient = (clientData: Omit<Client, "id" | "createdAt" | "updatedAt">) => {
-    if (editingClient) {
-      setClients(
-        clients.map((c) =>
-          c.id === editingClient.id
-            ? {
-                ...clientData,
-                id: editingClient.id,
-                createdAt: editingClient.createdAt,
-                updatedAt: new Date().toISOString(),
-              }
-            : c
-        )
-      );
-      toast({
-        title: "Cliente atualizado",
-        description: "Os dados do cliente foram atualizados com sucesso.",
-      });
-    } else {
-      const newClient: Client = {
-        ...clientData,
-        id: Math.random().toString(36).substring(7),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setClients([...clients, newClient]);
-      toast({
-        title: "Cliente criado",
-        description: "Novo cliente adicionado com sucesso.",
-      });
-    }
-    setEditingClient(undefined);
-  };
+  const editingClient = clients.find(c => c.id === editingClientId);
 
-  const handleEdit = (client: Client) => {
-    setEditingClient(client);
+  const handleEdit = (clientId: string) => {
+    setEditingClientId(clientId);
     setDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    setClients(clients.filter((c) => c.id !== id));
-    toast({
-      title: "Cliente removido",
-      description: "Cliente removido com sucesso.",
-      variant: "destructive",
-    });
+    deleteClient.mutate(id);
   };
 
   const handleExport = () => {
@@ -102,16 +67,12 @@ const Index = () => {
 
     try {
       const importedClients = await importFromCSV(file);
-      const newClients = importedClients.map((c) => ({
-        ...c,
-        id: Math.random().toString(36).substring(7),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      setClients([...clients, ...newClients]);
+      for (const client of importedClients) {
+        await createClient.mutateAsync(client);
+      }
       toast({
         title: "Dados importados",
-        description: `${newClients.length} clientes foram importados com sucesso.`,
+        description: `${importedClients.length} clientes foram importados com sucesso.`,
       });
     } catch (error) {
       toast({
@@ -125,6 +86,14 @@ const Index = () => {
       fileInputRef.current.value = "";
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,7 +128,7 @@ const Index = () => {
             </Button>
             <Button
               onClick={() => {
-                setEditingClient(undefined);
+                setEditingClientId(undefined);
                 setDialogOpen(true);
               }}
               className="gap-2"
@@ -256,9 +225,20 @@ const Index = () => {
         {/* Client Dialog */}
         <ClientDialog
           open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setEditingClientId(undefined);
+          }}
           client={editingClient}
-          onSave={handleSaveClient}
+          onSave={async (clientData) => {
+            if (editingClient) {
+              await updateClient.mutateAsync({ ...clientData, id: editingClient.id, createdAt: editingClient.createdAt, updatedAt: editingClient.updatedAt });
+            } else {
+              await createClient.mutateAsync(clientData);
+            }
+            setDialogOpen(false);
+            setEditingClientId(undefined);
+          }}
         />
       </div>
     </div>
