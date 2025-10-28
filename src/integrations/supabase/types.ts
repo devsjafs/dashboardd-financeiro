@@ -14,7 +14,133 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      client_history: {
+        Row: {
+          changed_at: string
+          client_id: string
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          changed_at?: string
+          client_id: string
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          changed_at?: string
+          client_id?: string
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_notes: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          note: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          note: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          cnpj: string
+          codigo: string
+          created_at: string
+          id: string
+          inicio_competencia: string
+          nome_fantasia: string
+          razao_social: string
+          services: string[]
+          situacao: string
+          status: string
+          ultima_competencia: string | null
+          updated_at: string
+          valor_apoio: number | null
+          valor_contabilidade: number | null
+          valor_personalite: number | null
+          valor_smart: number | null
+          vencimento: number
+        }
+        Insert: {
+          cnpj: string
+          codigo: string
+          created_at?: string
+          id?: string
+          inicio_competencia: string
+          nome_fantasia: string
+          razao_social: string
+          services?: string[]
+          situacao: string
+          status: string
+          ultima_competencia?: string | null
+          updated_at?: string
+          valor_apoio?: number | null
+          valor_contabilidade?: number | null
+          valor_personalite?: number | null
+          valor_smart?: number | null
+          vencimento: number
+        }
+        Update: {
+          cnpj?: string
+          codigo?: string
+          created_at?: string
+          id?: string
+          inicio_competencia?: string
+          nome_fantasia?: string
+          razao_social?: string
+          services?: string[]
+          situacao?: string
+          status?: string
+          ultima_competencia?: string | null
+          updated_at?: string
+          valor_apoio?: number | null
+          valor_contabilidade?: number | null
+          valor_personalite?: number | null
+          valor_smart?: number | null
+          vencimento?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
