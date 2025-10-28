@@ -10,14 +10,15 @@ interface StatsCardProps {
     isPositive: boolean;
   };
   iconColor?: string;
+  bgColor?: string;
 }
 
-export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary" }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary", bgColor = "bg-primary/10" }: StatsCardProps) {
   return (
     <Card className="relative overflow-hidden bg-gradient-card shadow-card border-border/50 hover:shadow-md transition-all duration-300">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-primary/10 ${iconColor}`}>
+          <div className={`p-3 rounded-xl ${bgColor} ${iconColor}`}>
             <Icon className="w-6 h-6" />
           </div>
           {trend && (

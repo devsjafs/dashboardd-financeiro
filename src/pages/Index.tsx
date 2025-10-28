@@ -1,13 +1,17 @@
 import { useState, useRef } from "react";
-import { Client } from "@/types/client";
+import { Client, ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { exportToCSV, importFromCSV } from "@/utils/exportImport";
 import {
+  Zap,
   Briefcase,
+  Calculator,
+  Crown,
   DollarSign,
   Plus,
   Download,
@@ -18,9 +22,11 @@ const Index = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | undefined>();
+  const [activeTab, setActiveTab] = useState<ServiceType | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Apenas clientes ativos (excluindo ex-clientes)
   const activeClients = clients.filter((c) => c.status === "ativo");
 
   const smartRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.smart, 0);
@@ -28,6 +34,11 @@ const Index = () => {
   const contabilRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.contabilidade, 0);
   const personaliteRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.personalite, 0);
   const totalRevenue = smartRevenue + apoioRevenue + contabilRevenue + personaliteRevenue;
+
+  // Filtrar clientes por aba selecionada
+  const filteredClients = activeTab === "all" 
+    ? clients 
+    : clients.filter(c => c.services.includes(activeTab));
 
   const handleSaveClient = (clientData: Omit<Client, "id" | "createdAt" | "updatedAt">) => {
     if (editingClient) {
@@ -167,8 +178,9 @@ const Index = () => {
               style: "currency",
               currency: "BRL",
             }).format(smartRevenue)}
-            icon={Briefcase}
-            iconColor="text-primary"
+            icon={Zap}
+            iconColor="text-blue-500"
+            bgColor="bg-blue-500/10"
           />
           <StatsCard
             title="Apoio"
@@ -177,7 +189,8 @@ const Index = () => {
               currency: "BRL",
             }).format(apoioRevenue)}
             icon={Briefcase}
-            iconColor="text-primary"
+            iconColor="text-green-500"
+            bgColor="bg-green-500/10"
           />
           <StatsCard
             title="Contábil"
@@ -185,8 +198,9 @@ const Index = () => {
               style: "currency",
               currency: "BRL",
             }).format(contabilRevenue)}
-            icon={Briefcase}
-            iconColor="text-primary"
+            icon={Calculator}
+            iconColor="text-purple-500"
+            bgColor="bg-purple-500/10"
           />
           <StatsCard
             title="Personalite"
@@ -194,8 +208,9 @@ const Index = () => {
               style: "currency",
               currency: "BRL",
             }).format(personaliteRevenue)}
-            icon={Briefcase}
-            iconColor="text-primary"
+            icon={Crown}
+            iconColor="text-amber-500"
+            bgColor="bg-amber-500/10"
           />
           <StatsCard
             title="Receita Total"
@@ -205,11 +220,38 @@ const Index = () => {
             }).format(totalRevenue)}
             icon={DollarSign}
             iconColor="text-success"
+            bgColor="bg-success/10"
           />
         </div>
 
-        {/* Clients Table */}
-        <ClientsTable clients={clients} onEdit={handleEdit} onDelete={handleDelete} />
+        {/* Tabs for filtering by service */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all")} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="all" className="gap-2">
+              Todos
+            </TabsTrigger>
+            <TabsTrigger value="smart" className="gap-2">
+              <Zap className="w-4 h-4" />
+              Smart
+            </TabsTrigger>
+            <TabsTrigger value="apoio" className="gap-2">
+              <Briefcase className="w-4 h-4" />
+              Apoio
+            </TabsTrigger>
+            <TabsTrigger value="contabilidade" className="gap-2">
+              <Calculator className="w-4 h-4" />
+              Contábil
+            </TabsTrigger>
+            <TabsTrigger value="personalite" className="gap-2">
+              <Crown className="w-4 h-4" />
+              Personalite
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-6">
+            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
+          </TabsContent>
+        </Tabs>
 
         {/* Client Dialog */}
         <ClientDialog

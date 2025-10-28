@@ -11,7 +11,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown } from "lucide-react";
 
 interface ClientsTableProps {
   clients: Client[];
@@ -56,18 +63,38 @@ const situacaoLabels = {
   'anual': 'Anual'
 };
 
+type SortOption = "codigo" | "nome-az" | "nome-za" | "valor-asc" | "valor-desc";
+
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("codigo");
 
-  const filteredClients = clients.filter((client) => {
-    const searchLower = search.toLowerCase();
-    return (
-      client.codigo.toLowerCase().includes(searchLower) ||
-      client.nomeFantasia.toLowerCase().includes(searchLower) ||
-      client.razaoSocial.toLowerCase().includes(searchLower) ||
-      client.cnpj.includes(searchLower)
-    );
-  });
+  const filteredAndSortedClients = clients
+    .filter((client) => {
+      const searchLower = search.toLowerCase();
+      return (
+        client.codigo.toLowerCase().includes(searchLower) ||
+        client.nomeFantasia.toLowerCase().includes(searchLower) ||
+        client.razaoSocial.toLowerCase().includes(searchLower) ||
+        client.cnpj.includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "codigo":
+          return a.codigo.localeCompare(b.codigo);
+        case "nome-az":
+          return a.nomeFantasia.localeCompare(b.nomeFantasia);
+        case "nome-za":
+          return b.nomeFantasia.localeCompare(a.nomeFantasia);
+        case "valor-asc":
+          return getTotalMensalidade(a.valorMensalidade) - getTotalMensalidade(b.valorMensalidade);
+        case "valor-desc":
+          return getTotalMensalidade(b.valorMensalidade) - getTotalMensalidade(a.valorMensalidade);
+        default:
+          return 0;
+      }
+    });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -86,7 +113,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -96,6 +123,19 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
             className="pl-9"
           />
         </div>
+        <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+          <SelectTrigger className="w-[200px]">
+            <ArrowUpDown className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="codigo">Código</SelectItem>
+            <SelectItem value="nome-az">Nome (A-Z)</SelectItem>
+            <SelectItem value="nome-za">Nome (Z-A)</SelectItem>
+            <SelectItem value="valor-asc">Valor (Menor)</SelectItem>
+            <SelectItem value="valor-desc">Valor (Maior)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
@@ -115,14 +155,14 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.length === 0 ? (
+            {filteredAndSortedClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Nenhum cliente encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              filteredClients.map((client) => (
+              filteredAndSortedClients.map((client) => (
                 <TableRow key={client.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell className="font-medium">{client.codigo}</TableCell>
                   <TableCell>{client.nomeFantasia}</TableCell>
