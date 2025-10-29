@@ -68,7 +68,7 @@ export const PaymentsTable = ({ payments, onEdit, onDelete, onMarkAsPaid }: Paym
                       Não Pago
                     </Badge>
                   ) : (
-                    <Badge variant="default" className="bg-green-500">
+                    <Badge variant="default" className="bg-green-500 hover:bg-green-500">
                       Pago
                     </Badge>
                   )}

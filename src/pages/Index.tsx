@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
 import { ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
@@ -19,7 +18,6 @@ import {
   Download,
   Upload,
   Loader2,
-  Receipt,
 } from "lucide-react";
 
 const Index = () => {
@@ -91,164 +89,156 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center h-96">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard de Clientes</h1>
-            <p className="text-muted-foreground">
-              Gerencie seus clientes e acompanhe as métricas importantes
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Link to="/pagamentos">
-              <Button variant="outline" className="gap-2">
-                <Receipt className="w-4 h-4" />
-                Pagamentos
-              </Button>
-            </Link>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleImport}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Importar
-            </Button>
-            <Button variant="outline" onClick={handleExport} className="gap-2">
-              <Download className="w-4 h-4" />
-              Exportar
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingClientId(undefined);
-                setDialogOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Novo Cliente
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard de Clientes</h1>
+          <p className="text-muted-foreground">
+            Gerencie seus clientes e acompanhe as métricas importantes
+          </p>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <StatsCard
-            title="Smart"
-            value={new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(smartRevenue)}
-            icon={Zap}
-            iconColor="text-blue-500"
-            bgColor="bg-blue-500/10"
+        <div className="flex gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImport}
+            className="hidden"
           />
-          <StatsCard
-            title="Apoio"
-            value={new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(apoioRevenue)}
-            icon={Briefcase}
-            iconColor="text-green-500"
-            bgColor="bg-green-500/10"
-          />
-          <StatsCard
-            title="Contábil"
-            value={new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(contabilRevenue)}
-            icon={Calculator}
-            iconColor="text-purple-500"
-            bgColor="bg-purple-500/10"
-          />
-          <StatsCard
-            title="Personalite"
-            value={new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(personaliteRevenue)}
-            icon={Crown}
-            iconColor="text-amber-500"
-            bgColor="bg-amber-500/10"
-          />
-          <StatsCard
-            title="Receita Total"
-            value={new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(totalRevenue)}
-            icon={DollarSign}
-            iconColor="text-success"
-            bgColor="bg-success/10"
-          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar
+          </Button>
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="w-4 h-4" />
+            Exportar
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingClientId(undefined);
+              setDialogOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Cliente
+          </Button>
         </div>
+      </div>
 
-        {/* Tabs for filtering by service */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all")} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="all" className="gap-2">
-              Todos
-            </TabsTrigger>
-            <TabsTrigger value="smart" className="gap-2">
-              <Zap className="w-4 h-4" />
-              Smart
-            </TabsTrigger>
-            <TabsTrigger value="apoio" className="gap-2">
-              <Briefcase className="w-4 h-4" />
-              Apoio
-            </TabsTrigger>
-            <TabsTrigger value="contabilidade" className="gap-2">
-              <Calculator className="w-4 h-4" />
-              Contábil
-            </TabsTrigger>
-            <TabsTrigger value="personalite" className="gap-2">
-              <Crown className="w-4 h-4" />
-              Personalite
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={activeTab} className="mt-6">
-            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
-          </TabsContent>
-        </Tabs>
-
-        {/* Client Dialog */}
-        <ClientDialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setEditingClientId(undefined);
-          }}
-          client={editingClient}
-          onSave={async (clientData) => {
-            if (editingClient) {
-              await updateClient.mutateAsync({ ...clientData, id: editingClient.id, createdAt: editingClient.createdAt, updatedAt: editingClient.updatedAt });
-            } else {
-              await createClient.mutateAsync(clientData);
-            }
-            setDialogOpen(false);
-            setEditingClientId(undefined);
-          }}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatsCard
+          title="Smart"
+          value={new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(smartRevenue)}
+          icon={Zap}
+          iconColor="text-blue-500"
+          bgColor="bg-blue-500/10"
+        />
+        <StatsCard
+          title="Apoio"
+          value={new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(apoioRevenue)}
+          icon={Briefcase}
+          iconColor="text-green-500"
+          bgColor="bg-green-500/10"
+        />
+        <StatsCard
+          title="Contábil"
+          value={new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(contabilRevenue)}
+          icon={Calculator}
+          iconColor="text-purple-500"
+          bgColor="bg-purple-500/10"
+        />
+        <StatsCard
+          title="Personalite"
+          value={new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(personaliteRevenue)}
+          icon={Crown}
+          iconColor="text-amber-500"
+          bgColor="bg-amber-500/10"
+        />
+        <StatsCard
+          title="Receita Total"
+          value={new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(totalRevenue)}
+          icon={DollarSign}
+          iconColor="text-success"
+          bgColor="bg-success/10"
         />
       </div>
+
+      {/* Tabs for filtering by service */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all")} className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all" className="gap-2">
+            Todos
+          </TabsTrigger>
+          <TabsTrigger value="smart" className="gap-2">
+            <Zap className="w-4 h-4" />
+            Smart
+          </TabsTrigger>
+          <TabsTrigger value="apoio" className="gap-2">
+            <Briefcase className="w-4 h-4" />
+            Apoio
+          </TabsTrigger>
+          <TabsTrigger value="contabilidade" className="gap-2">
+            <Calculator className="w-4 h-4" />
+            Contábil
+          </TabsTrigger>
+          <TabsTrigger value="personalite" className="gap-2">
+            <Crown className="w-4 h-4" />
+            Personalite
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-6">
+          <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Client Dialog */}
+      <ClientDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingClientId(undefined);
+        }}
+        client={editingClient}
+        onSave={async (clientData) => {
+          if (editingClient) {
+            await updateClient.mutateAsync({ ...clientData, id: editingClient.id, createdAt: editingClient.createdAt, updatedAt: editingClient.updatedAt });
+          } else {
+            await createClient.mutateAsync(clientData);
+          }
+          setDialogOpen(false);
+          setEditingClientId(undefined);
+        }}
+      />
     </div>
   );
 };

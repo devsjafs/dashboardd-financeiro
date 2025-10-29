@@ -85,99 +85,97 @@ const Payments = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center h-96">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Pagamentos</h1>
-            <p className="text-muted-foreground">
-              Gerencie suas despesas e acompanhe os pagamentos
-            </p>
-          </div>
-          <div className="flex gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filtrar por mês:</span>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {generateMonthOptions().map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={() => {
-                setEditingPaymentId(undefined);
-                setDialogOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Despesa
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Pagamentos</h1>
+          <p className="text-muted-foreground">
+            Gerencie suas despesas e acompanhe os pagamentos
+          </p>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <PaymentStatsCard title="Total" value={formatCurrency(totalValue)} />
-          <PaymentStatsCard
-            title="Pago"
-            value={formatCurrency(paidValue)}
-            valueColor="text-green-500"
-          />
-          <PaymentStatsCard
-            title="Não Pago"
-            value={formatCurrency(unpaidValue)}
-            valueColor="text-red-500"
-          />
+        <div className="flex gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Filtrar por mês:</span>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {generateMonthOptions().map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingPaymentId(undefined);
+              setDialogOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Despesa
+          </Button>
         </div>
+      </div>
 
-        {/* Payments Table */}
-        <PaymentsTable
-          payments={filteredPayments}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onMarkAsPaid={handleMarkAsPaid}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <PaymentStatsCard title="Total" value={formatCurrency(totalValue)} />
+        <PaymentStatsCard
+          title="Pago"
+          value={formatCurrency(paidValue)}
+          valueColor="text-green-500"
         />
-
-        {/* Payment Dialog */}
-        <PaymentDialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setEditingPaymentId(undefined);
-          }}
-          payment={editingPayment}
-          onSave={async (paymentData) => {
-            if (editingPayment) {
-              await updatePayment.mutateAsync({
-                ...paymentData,
-                id: editingPayment.id,
-                created_at: editingPayment.created_at,
-                updated_at: editingPayment.updated_at,
-              });
-            } else {
-              await createPayment.mutateAsync(paymentData);
-            }
-            setDialogOpen(false);
-            setEditingPaymentId(undefined);
-          }}
+        <PaymentStatsCard
+          title="Não Pago"
+          value={formatCurrency(unpaidValue)}
+          valueColor="text-red-500"
         />
       </div>
+
+      {/* Payments Table */}
+      <PaymentsTable
+        payments={filteredPayments}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onMarkAsPaid={handleMarkAsPaid}
+      />
+
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingPaymentId(undefined);
+        }}
+        payment={editingPayment}
+        onSave={async (paymentData) => {
+          if (editingPayment) {
+            await updatePayment.mutateAsync({
+              ...paymentData,
+              id: editingPayment.id,
+              created_at: editingPayment.created_at,
+              updated_at: editingPayment.updated_at,
+            });
+          } else {
+            await createPayment.mutateAsync(paymentData);
+          }
+          setDialogOpen(false);
+          setEditingPaymentId(undefined);
+        }}
+      />
     </div>
   );
 };
