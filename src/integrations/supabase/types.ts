@@ -141,6 +141,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          descricao: string
+          id: string
+          intervalo_recorrencia: string | null
+          recorrente: boolean
+          status: string
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          descricao: string
+          id?: string
+          intervalo_recorrencia?: string | null
+          recorrente?: boolean
+          status?: string
+          updated_at?: string
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          descricao?: string
+          id?: string
+          intervalo_recorrencia?: string | null
+          recorrente?: boolean
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

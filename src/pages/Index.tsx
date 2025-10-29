@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
@@ -18,6 +19,7 @@ import {
   Download,
   Upload,
   Loader2,
+  Receipt,
 } from "lucide-react";
 
 const Index = () => {
@@ -107,6 +109,12 @@ const Index = () => {
             </p>
           </div>
           <div className="flex gap-3">
+            <Link to="/pagamentos">
+              <Button variant="outline" className="gap-2">
+                <Receipt className="w-4 h-4" />
+                Pagamentos
+              </Button>
+            </Link>
             <input
               ref={fileInputRef}
               type="file"
