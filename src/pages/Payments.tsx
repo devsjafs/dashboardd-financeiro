@@ -28,6 +28,7 @@ const Payments = () => {
     updatePayment,
     deletePayment,
     markAsPaid,
+    markAsUnpaid,
   } = usePayments();
 
   // Filter payments by selected month
@@ -65,6 +66,10 @@ const Payments = () => {
 
   const handleMarkAsPaid = (id: string) => {
     markAsPaid.mutate(id);
+  };
+
+  const handleMarkAsUnpaid = (id: string) => {
+    markAsUnpaid.mutate(id);
   };
 
   // Generate month options (current month ± 12 months)
@@ -151,6 +156,7 @@ const Payments = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onMarkAsPaid={handleMarkAsPaid}
+        onMarkAsUnpaid={handleMarkAsUnpaid}
       />
 
       {/* Payment Dialog */}

@@ -18,9 +18,10 @@ interface PaymentsTableProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onMarkAsPaid: (id: string) => void;
+  onMarkAsUnpaid: (id: string) => void;
 }
 
-export const PaymentsTable = ({ payments, onEdit, onDelete, onMarkAsPaid }: PaymentsTableProps) => {
+export const PaymentsTable = ({ payments, onEdit, onDelete, onMarkAsPaid, onMarkAsUnpaid }: PaymentsTableProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -68,7 +69,11 @@ export const PaymentsTable = ({ payments, onEdit, onDelete, onMarkAsPaid }: Paym
                       Não Pago
                     </Badge>
                   ) : (
-                    <Badge variant="default" className="bg-green-500 hover:bg-green-500">
+                    <Badge 
+                      variant="default" 
+                      className="bg-green-500 hover:bg-green-600 cursor-pointer"
+                      onClick={() => onMarkAsUnpaid(payment.id)}
+                    >
                       Pago
                     </Badge>
                   )}

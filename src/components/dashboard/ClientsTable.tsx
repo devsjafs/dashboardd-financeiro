@@ -113,7 +113,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   };
 
   const getTotalMensalidade = (values: Client['valorMensalidade']) => {
-    return values.smart + values.apoio + values.contabilidade;
+    return values.smart + values.apoio + values.contabilidade + values.personalite;
   };
 
   return (
