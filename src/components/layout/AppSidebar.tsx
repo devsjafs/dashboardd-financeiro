@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt } from "lucide-react";
+import { LayoutDashboard, Receipt, DollarSign } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -15,6 +15,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Pagamentos", url: "/pagamentos", icon: Receipt },
+  { title: "Comissões", url: "/comissoes", icon: DollarSign },
 ];
 
 export function AppSidebar() {

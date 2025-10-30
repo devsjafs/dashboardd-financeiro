@@ -141,6 +141,100 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_payments: {
+        Row: {
+          commission_id: string
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          fim_trimestre: string
+          id: string
+          inicio_trimestre: string
+          pago: boolean
+          preco: number
+          trimestre_numero: number
+          updated_at: string
+        }
+        Insert: {
+          commission_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          fim_trimestre: string
+          id?: string
+          inicio_trimestre: string
+          pago?: boolean
+          preco: number
+          trimestre_numero: number
+          updated_at?: string
+        }
+        Update: {
+          commission_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          fim_trimestre?: string
+          id?: string
+          inicio_trimestre?: string
+          pago?: boolean
+          preco?: number
+          trimestre_numero?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_payments_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "commissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissions: {
+        Row: {
+          client_id: string
+          created_at: string
+          duracao_meses: number
+          id: string
+          inicio_periodo: string
+          percentual_comissao: number
+          updated_at: string
+          valor_base: number
+          vendedor: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          duracao_meses: number
+          id?: string
+          inicio_periodo: string
+          percentual_comissao?: number
+          updated_at?: string
+          valor_base: number
+          vendedor: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          duracao_meses?: number
+          id?: string
+          inicio_periodo?: string
+          percentual_comissao?: number
+          updated_at?: string
+          valor_base?: number
+          vendedor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           created_at: string
