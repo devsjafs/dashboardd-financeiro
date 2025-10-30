@@ -127,6 +127,37 @@ export const usePayments = () => {
     },
   });
 
+  const markAsUnpaid = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("payments")
+        .update({
+          status: "não pago",
+          data_pagamento: null,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      toast({
+        title: "Pagamento revertido",
+        description: "O pagamento foi marcado como não pago.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o pagamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     payments,
     isLoading,
@@ -134,5 +165,6 @@ export const usePayments = () => {
     updatePayment,
     deletePayment,
     markAsPaid,
+    markAsUnpaid,
   };
 };
