@@ -24,7 +24,9 @@ export default function Commissions() {
   // Calcular estatísticas
   const totalComissoes = commissions.reduce((sum, c) => {
     const numTrimestres = c.duracao_meses / 3;
-    return sum + (c.valor_base * c.percentual_comissao / 100) * numTrimestres;
+    // Valor base é a mensalidade, multiplica por 3 (3 meses/trimestre) e depois aplica %
+    const valorPorTrimestre = (c.valor_base * 3 * c.percentual_comissao / 100);
+    return sum + (valorPorTrimestre * numTrimestres);
   }, 0);
 
   const pagoComissoes = payments

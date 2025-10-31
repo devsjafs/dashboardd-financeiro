@@ -44,6 +44,7 @@ const formSchema = z.object({
   services: z.array(z.enum(["smart", "apoio", "contabilidade", "personalite"])).min(1, "Selecione pelo menos um serviço"),
   situacao: z.enum(["mes-vencido", "mes-corrente", "anual"]),
   status: z.enum(["ativo", "inativo", "sem-faturamento", "ex-cliente", "suspenso"]),
+  grupo: z.string().optional().or(z.literal("")),
 });
 
 interface ClientDialogProps {
@@ -71,6 +72,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       services: [],
       situacao: "mes-corrente",
       status: "ativo",
+      grupo: "",
     },
   });
 
@@ -91,6 +93,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         services: client.services,
         situacao: client.situacao,
         status: client.status,
+        grupo: client.grupo || "",
       });
     } else {
       form.reset({
@@ -108,6 +111,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         services: [],
         situacao: "mes-corrente",
         status: "ativo",
+        grupo: "",
       });
     }
   }, [client, form]);
@@ -130,6 +134,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       services: values.services as ServiceType[],
       situacao: values.situacao as ClientSituacao,
       status: values.status as ClientStatus,
+      grupo: values.grupo || undefined,
     });
     form.reset();
   };
@@ -383,6 +388,20 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                         <SelectItem value="suspenso">Suspenso</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="grupo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Grupo</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: Matriz, Filial A" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

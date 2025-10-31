@@ -87,7 +87,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
     .sort((a, b) => {
       switch (sortBy) {
         case "codigo":
-          return a.codigo.localeCompare(b.codigo);
+          return parseInt(a.codigo) - parseInt(b.codigo);
         case "nome-az":
           return a.nomeFantasia.localeCompare(b.nomeFantasia);
         case "nome-za":

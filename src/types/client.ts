@@ -24,6 +24,7 @@ export interface Client {
   services: ServiceType[];
   situacao: ClientSituacao;
   status: ClientStatus;
+  grupo?: string;
   createdAt: string;
   updatedAt: string;
 }

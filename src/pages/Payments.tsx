@@ -5,6 +5,7 @@ import { usePayments } from "@/hooks/usePayments";
 import { PaymentStatsCard } from "@/components/payments/PaymentStatsCard";
 import { PaymentsTable } from "@/components/payments/PaymentsTable";
 import { PaymentDialog } from "@/components/payments/PaymentDialog";
+import { PaymentBankDialog } from "@/components/payments/PaymentBankDialog";
 import { Payment } from "@/types/payment";
 import {
   Select,
@@ -16,7 +17,9 @@ import {
 
 const Payments = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bankDialogOpen, setBankDialogOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | undefined>();
+  const [markingPaymentId, setMarkingPaymentId] = useState<string | undefined>();
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7)
   );
@@ -64,8 +67,22 @@ const Payments = () => {
     deletePayment.mutate(id);
   };
 
-  const handleMarkAsPaid = (id: string) => {
-    markAsPaid.mutate(id);
+  const handleMarkAsPaid = (id: string, banco?: string) => {
+    if (banco !== undefined) {
+      // Called from table with banco parameter
+      markAsPaid.mutate({ id, banco });
+    } else {
+      // Open dialog to get banco
+      setMarkingPaymentId(id);
+      setBankDialogOpen(true);
+    }
+  };
+
+  const handleBankConfirm = (banco: string) => {
+    if (markingPaymentId) {
+      markAsPaid.mutate({ id: markingPaymentId, banco });
+      setMarkingPaymentId(undefined);
+    }
   };
 
   const handleMarkAsUnpaid = (id: string) => {
@@ -181,6 +198,13 @@ const Payments = () => {
           setDialogOpen(false);
           setEditingPaymentId(undefined);
         }}
+      />
+
+      {/* Bank Dialog */}
+      <PaymentBankDialog
+        open={bankDialogOpen}
+        onOpenChange={setBankDialogOpen}
+        onConfirm={handleBankConfirm}
       />
     </div>
   );

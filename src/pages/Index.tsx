@@ -24,6 +24,7 @@ const Index = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<ServiceType | "all">("all");
+  const [activeGroup, setActiveGroup] = useState<string | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
@@ -37,10 +38,13 @@ const Index = () => {
   const personaliteRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.personalite, 0);
   const totalRevenue = smartRevenue + apoioRevenue + contabilRevenue + personaliteRevenue;
 
-  // Filtrar clientes por aba selecionada
-  const filteredClients = activeTab === "all" 
-    ? clients 
-    : clients.filter(c => c.services.includes(activeTab));
+  // Obter lista de grupos únicos
+  const groups = Array.from(new Set(clients.filter(c => c.grupo).map(c => c.grupo!)));
+
+  // Filtrar clientes por aba de serviço e grupo
+  const filteredClients = clients
+    .filter(c => activeTab === "all" ? true : c.services.includes(activeTab))
+    .filter(c => activeGroup === "all" ? true : c.grupo === activeGroup);
 
   const editingClient = clients.find(c => c.id === editingClientId);
 
@@ -216,7 +220,24 @@ const Index = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6">
+        <TabsContent value={activeTab} className="mt-6 space-y-4">
+          {/* Group Filter */}
+          {groups.length > 0 && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Filtrar por grupo:</span>
+              <Tabs value={activeGroup} onValueChange={setActiveGroup} className="w-auto">
+                <TabsList>
+                  <TabsTrigger value="all">Todos</TabsTrigger>
+                  {groups.map(group => (
+                    <TabsTrigger key={group} value={group}>
+                      {group}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </div>
+          )}
+
           <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
         </TabsContent>
       </Tabs>

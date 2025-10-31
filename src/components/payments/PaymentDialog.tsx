@@ -39,6 +39,7 @@ export const PaymentDialog = ({
     data_pagamento: null,
     recorrente: false,
     intervalo_recorrencia: null,
+    banco: null,
   });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export const PaymentDialog = ({
         data_pagamento: payment.data_pagamento,
         recorrente: payment.recorrente,
         intervalo_recorrencia: payment.intervalo_recorrencia,
+        banco: payment.banco || null,
       });
     } else {
       setFormData({
@@ -61,6 +63,7 @@ export const PaymentDialog = ({
         data_pagamento: null,
         recorrente: false,
         intervalo_recorrencia: null,
+        banco: null,
       });
     }
   }, [payment, open]);
@@ -117,6 +120,18 @@ export const PaymentDialog = ({
                 setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })
               }
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="banco">Banco</Label>
+            <Input
+              id="banco"
+              placeholder="Ex: Banco do Brasil"
+              value={formData.banco || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, banco: e.target.value || null })
+              }
             />
           </div>
 

@@ -7,6 +7,7 @@ export type Payment = {
   data_pagamento: string | null;
   recorrente: boolean;
   intervalo_recorrencia: "mensal" | "semanal" | "trimestral" | "semestral" | "anual" | null;
+  banco: string | null;
   created_at: string;
   updated_at: string;
 };

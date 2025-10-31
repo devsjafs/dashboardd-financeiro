@@ -97,12 +97,13 @@ export const usePayments = () => {
   });
 
   const markAsPaid = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, banco }: { id: string; banco?: string }) => {
       const { data, error } = await supabase
         .from("payments")
         .update({
           status: "pago",
           data_pagamento: new Date().toISOString().split("T")[0],
+          banco: banco || null,
         })
         .eq("id", id)
         .select()

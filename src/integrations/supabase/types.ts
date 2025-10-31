@@ -86,6 +86,7 @@ export type Database = {
           cnpj: string
           codigo: string
           created_at: string
+          grupo: string | null
           id: string
           inicio_competencia: string
           nome_fantasia: string
@@ -105,6 +106,7 @@ export type Database = {
           cnpj: string
           codigo: string
           created_at?: string
+          grupo?: string | null
           id?: string
           inicio_competencia: string
           nome_fantasia: string
@@ -124,6 +126,7 @@ export type Database = {
           cnpj?: string
           codigo?: string
           created_at?: string
+          grupo?: string | null
           id?: string
           inicio_competencia?: string
           nome_fantasia?: string
@@ -237,6 +240,7 @@ export type Database = {
       }
       payments: {
         Row: {
+          banco: string | null
           created_at: string
           data_pagamento: string | null
           descricao: string
@@ -249,6 +253,7 @@ export type Database = {
           vencimento: string
         }
         Insert: {
+          banco?: string | null
           created_at?: string
           data_pagamento?: string | null
           descricao: string
@@ -261,6 +266,7 @@ export type Database = {
           vencimento: string
         }
         Update: {
+          banco?: string | null
           created_at?: string
           data_pagamento?: string | null
           descricao?: string

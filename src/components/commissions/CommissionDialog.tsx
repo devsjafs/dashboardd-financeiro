@@ -85,7 +85,8 @@ export function CommissionDialog({ open, onOpenChange, commissionId }: Commissio
 
   const createQuarterlyPayments = async (commissionId: string, values: z.infer<typeof formSchema>) => {
     const numTrimestres = parseInt(values.duracao_meses) / 3;
-    const valorComissao = (parseFloat(values.valor_base) * parseFloat(values.percentual_comissao)) / 100;
+    // Valor base é a mensalidade, então multiplicar por 3 (3 meses) e depois aplicar %
+    const valorComissao = (parseFloat(values.valor_base) * 3 * parseFloat(values.percentual_comissao)) / 100;
     const diaVencimento = parseInt(values.dia_vencimento);
     
     const payments = [];
@@ -265,7 +266,7 @@ export function CommissionDialog({ open, onOpenChange, commissionId }: Commissio
                 name="valor_base"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor Base</FormLabel>
+                    <FormLabel>Valor Base (Mensalidade)</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" step="0.01" />
                     </FormControl>

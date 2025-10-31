@@ -17,7 +17,7 @@ interface PaymentsTableProps {
   payments: Payment[];
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  onMarkAsPaid: (id: string) => void;
+  onMarkAsPaid: (id: string, banco?: string) => void;
   onMarkAsUnpaid: (id: string) => void;
 }
 

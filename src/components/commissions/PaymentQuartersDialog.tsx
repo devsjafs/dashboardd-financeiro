@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, CheckCircle, XCircle } from "lucide-react";
+import { CalendarIcon, CheckCircle } from "lucide-react";
 import { useCommissions } from "@/hooks/useCommissions";
 import { CommissionPayment } from "@/types/commission";
 
@@ -114,7 +115,15 @@ export function PaymentQuartersDialog({
                   </TableCell>
                   <TableCell className="text-right">
                     {!payment.pago && (
-                      <Popover>
+                      <Popover
+                        open={selectedPaymentId === payment.id}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setSelectedPaymentId(null);
+                            setSelectedDate(undefined);
+                          }
+                        }}
+                      >
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -135,6 +144,7 @@ export function PaymentQuartersDialog({
                               selected={selectedDate}
                               onSelect={setSelectedDate}
                               initialFocus
+                              className={cn("p-3 pointer-events-auto")}
                             />
                             <div className="flex justify-end gap-2 mt-3">
                               <Button
