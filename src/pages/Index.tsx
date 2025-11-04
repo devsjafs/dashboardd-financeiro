@@ -18,12 +18,13 @@ import {
   Download,
   Upload,
   Loader2,
+  Users,
 } from "lucide-react";
 
 const Index = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | undefined>();
-  const [activeTab, setActiveTab] = useState<ServiceType | "all">("all");
+  const [activeTab, setActiveTab] = useState<ServiceType | "all" | "grupos">("all");
   const [activeGroup, setActiveGroup] = useState<string | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -41,9 +42,23 @@ const Index = () => {
   // Obter lista de grupos únicos
   const groups = Array.from(new Set(clients.filter(c => c.grupo).map(c => c.grupo!)));
 
+  // Calcular valores por grupo
+  const groupRevenues = groups.map(group => {
+    const groupClients = activeClients.filter(c => c.grupo === group);
+    const total = groupClients.reduce((sum, c) => {
+      return sum + c.valorMensalidade.smart + c.valorMensalidade.apoio + 
+             c.valorMensalidade.contabilidade + c.valorMensalidade.personalite;
+    }, 0);
+    return { group, total, count: groupClients.length };
+  });
+
   // Filtrar clientes por aba de serviço e grupo
   const filteredClients = clients
-    .filter(c => activeTab === "all" ? true : c.services.includes(activeTab))
+    .filter(c => {
+      if (activeTab === "all") return true;
+      if (activeTab === "grupos") return activeGroup !== "all" ? c.grupo === activeGroup : c.grupo !== null && c.grupo !== undefined;
+      return c.services.includes(activeTab as ServiceType);
+    })
     .filter(c => activeGroup === "all" ? true : c.grupo === activeGroup);
 
   const editingClient = clients.find(c => c.id === editingClientId);
@@ -197,8 +212,8 @@ const Index = () => {
       </div>
 
       {/* Tabs for filtering by service */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all")} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all" | "grupos")} className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all" className="gap-2">
             Todos
           </TabsTrigger>
@@ -218,11 +233,50 @@ const Index = () => {
             <Crown className="w-4 h-4" />
             Personalite
           </TabsTrigger>
+          <TabsTrigger value="grupos" className="gap-2">
+            <Users className="w-4 h-4" />
+            Grupos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6 space-y-4">
-          {/* Group Filter */}
-          {groups.length > 0 && (
+          {/* Group Cards - shown when on Grupos tab */}
+          {activeTab === "grupos" && groups.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+              {groupRevenues.map(({ group, total, count }) => (
+                <button
+                  key={group}
+                  onClick={() => setActiveGroup(activeGroup === group ? "all" : group)}
+                  className={`p-4 rounded-xl border transition-all hover:shadow-lg ${
+                    activeGroup === group 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-lg">{group}</h3>
+                  </div>
+                  <div className="text-left space-y-1">
+                    <p className="text-2xl font-bold text-foreground">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(total)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {count} {count === 1 ? 'empresa' : 'empresas'}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Group Filter for non-Grupos tabs */}
+          {activeTab !== "grupos" && groups.length > 0 && (
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Filtrar por grupo:</span>
               <Tabs value={activeGroup} onValueChange={setActiveGroup} className="w-auto">
