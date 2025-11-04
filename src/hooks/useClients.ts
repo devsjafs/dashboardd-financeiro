@@ -34,6 +34,7 @@ export const useClients = () => {
         services: client.services,
         situacao: client.situacao,
         status: client.status,
+        grupo: client.grupo,
         createdAt: client.created_at,
         updatedAt: client.updated_at,
       })) as Client[];
@@ -59,6 +60,7 @@ export const useClients = () => {
           services: client.services,
           situacao: client.situacao,
           status: client.status,
+          grupo: client.grupo,
         })
         .select()
         .single();
@@ -101,6 +103,7 @@ export const useClients = () => {
           services: client.services,
           situacao: client.situacao,
           status: client.status,
+          grupo: client.grupo,
         })
         .eq("id", client.id)
         .select()
