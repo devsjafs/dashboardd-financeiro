@@ -3,6 +3,7 @@ import { ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
+import { GroupDialog } from "@/components/dashboard/GroupDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +26,8 @@ const Index = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<ServiceType | "all" | "grupos">("all");
-  const [activeGroup, setActiveGroup] = useState<string | "all">("all");
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
@@ -52,14 +54,17 @@ const Index = () => {
     return { group, total, count: groupClients.length };
   });
 
-  // Filtrar clientes por aba de serviço e grupo
-  const filteredClients = clients
-    .filter(c => {
-      if (activeTab === "all") return true;
-      if (activeTab === "grupos") return activeGroup !== "all" ? c.grupo === activeGroup : c.grupo !== null && c.grupo !== undefined;
-      return c.services.includes(activeTab as ServiceType);
-    })
-    .filter(c => activeGroup === "all" ? true : c.grupo === activeGroup);
+  // Filtrar clientes por aba de serviço
+  const filteredClients = clients.filter(c => {
+    if (activeTab === "all") return true;
+    if (activeTab === "grupos") return false; // Não mostrar tabela na aba grupos
+    return c.services.includes(activeTab as ServiceType);
+  });
+
+  // Clientes do grupo selecionado para o dialog
+  const selectedGroupClients = selectedGroup 
+    ? activeClients.filter(c => c.grupo === selectedGroup)
+    : [];
 
   const editingClient = clients.find(c => c.id === editingClientId);
 
@@ -214,7 +219,6 @@ const Index = () => {
       {/* Tabs for filtering by service */}
       <Tabs value={activeTab} onValueChange={(value) => {
         setActiveTab(value as ServiceType | "all" | "grupos");
-        setActiveGroup("all");
       }} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all" className="gap-2">
@@ -249,12 +253,11 @@ const Index = () => {
               {groupRevenues.map(({ group, total, count }) => (
                 <button
                   key={group}
-                  onClick={() => setActiveGroup(activeGroup === group ? "all" : group)}
-                  className={`p-4 rounded-xl border transition-all hover:shadow-lg ${
-                    activeGroup === group 
-                      ? 'border-primary bg-primary/5 shadow-md' 
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
+                  onClick={() => {
+                    setSelectedGroup(group);
+                    setGroupDialogOpen(true);
+                  }}
+                  className="p-4 rounded-xl border transition-all hover:shadow-lg border-border bg-card hover:border-primary/50"
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-primary/10">
@@ -278,8 +281,8 @@ const Index = () => {
             </div>
           )}
 
-          {/* Show ClientsTable only when not in Grupos tab, or when a specific group is selected */}
-          {(activeTab !== "grupos" || activeGroup !== "all") && (
+          {/* Show ClientsTable for non-Grupos tabs */}
+          {activeTab !== "grupos" && (
             <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </TabsContent>
@@ -302,6 +305,16 @@ const Index = () => {
           setDialogOpen(false);
           setEditingClientId(undefined);
         }}
+      />
+
+      {/* Group Dialog */}
+      <GroupDialog
+        open={groupDialogOpen}
+        onOpenChange={setGroupDialogOpen}
+        groupName={selectedGroup || ""}
+        clients={selectedGroupClients}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
     </div>
   );
