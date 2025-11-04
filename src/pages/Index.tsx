@@ -212,7 +212,10 @@ const Index = () => {
       </div>
 
       {/* Tabs for filtering by service */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ServiceType | "all" | "grupos")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value as ServiceType | "all" | "grupos");
+        setActiveGroup("all");
+      }} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="all" className="gap-2">
             Todos
@@ -275,24 +278,10 @@ const Index = () => {
             </div>
           )}
 
-          {/* Group Filter for non-Grupos tabs */}
-          {activeTab !== "grupos" && groups.length > 0 && (
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">Filtrar por grupo:</span>
-              <Tabs value={activeGroup} onValueChange={setActiveGroup} className="w-auto">
-                <TabsList>
-                  <TabsTrigger value="all">Todos</TabsTrigger>
-                  {groups.map(group => (
-                    <TabsTrigger key={group} value={group}>
-                      {group}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </div>
+          {/* Show ClientsTable only when not in Grupos tab, or when a specific group is selected */}
+          {(activeTab !== "grupos" || activeGroup !== "all") && (
+            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
           )}
-
-          <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
         </TabsContent>
       </Tabs>
 
