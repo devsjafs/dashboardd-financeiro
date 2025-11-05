@@ -86,6 +86,7 @@ export type Database = {
           cnpj: string
           codigo: string
           created_at: string
+          document_type: string | null
           grupo: string | null
           id: string
           inicio_competencia: string
@@ -106,6 +107,7 @@ export type Database = {
           cnpj: string
           codigo: string
           created_at?: string
+          document_type?: string | null
           grupo?: string | null
           id?: string
           inicio_competencia: string
@@ -126,6 +128,7 @@ export type Database = {
           cnpj?: string
           codigo?: string
           created_at?: string
+          document_type?: string | null
           grupo?: string | null
           id?: string
           inicio_competencia?: string
