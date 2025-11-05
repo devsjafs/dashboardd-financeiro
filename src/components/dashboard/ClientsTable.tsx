@@ -62,10 +62,11 @@ const serviceConfig = {
 const situacaoLabels = {
   'mes-vencido': 'Mês Vencido',
   'mes-corrente': 'Mês Corrente',
+  'mes-corrente-vencido': 'Mês Corrente/Vencido',
   'anual': 'Anual'
 };
 
-type SortOption = "codigo" | "nome-az" | "nome-za" | "valor-asc" | "valor-desc";
+type SortOption = "codigo" | "nome-az" | "nome-za" | "valor-asc" | "valor-desc" | "vencimento-asc" | "vencimento-desc";
 
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [search, setSearch] = useState("");
@@ -96,6 +97,10 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
           return getTotalMensalidade(a.valorMensalidade) - getTotalMensalidade(b.valorMensalidade);
         case "valor-desc":
           return getTotalMensalidade(b.valorMensalidade) - getTotalMensalidade(a.valorMensalidade);
+        case "vencimento-asc":
+          return a.vencimento - b.vencimento;
+        case "vencimento-desc":
+          return b.vencimento - a.vencimento;
         default:
           return 0;
       }
@@ -139,6 +144,8 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
             <SelectItem value="nome-za">Nome (Z-A)</SelectItem>
             <SelectItem value="valor-asc">Valor (Menor)</SelectItem>
             <SelectItem value="valor-desc">Valor (Maior)</SelectItem>
+            <SelectItem value="vencimento-asc">Vencimento (1-31)</SelectItem>
+            <SelectItem value="vencimento-desc">Vencimento (31-1)</SelectItem>
           </SelectContent>
         </Select>
       </div>

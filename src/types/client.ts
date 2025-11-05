@@ -2,7 +2,9 @@ export type ClientStatus = 'ativo' | 'inativo' | 'sem-faturamento' | 'ex-cliente
 
 export type ServiceType = 'smart' | 'apoio' | 'contabilidade' | 'personalite';
 
-export type ClientSituacao = 'mes-vencido' | 'mes-corrente' | 'anual';
+export type ClientSituacao = 'mes-vencido' | 'mes-corrente' | 'anual' | 'mes-corrente-vencido';
+
+export type DocumentType = 'cnpj' | 'cpf' | 'caepf';
 
 export interface MonthlyValue {
   smart: number;
@@ -17,6 +19,7 @@ export interface Client {
   nomeFantasia: string;
   razaoSocial: string;
   cnpj: string;
+  documentType: DocumentType;
   valorMensalidade: MonthlyValue;
   vencimento: number; // dia do mês
   inicioCompetencia: string; // formato: YYYY-MM

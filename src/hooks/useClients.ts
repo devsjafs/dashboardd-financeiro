@@ -22,6 +22,7 @@ export const useClients = () => {
         nomeFantasia: client.nome_fantasia,
         razaoSocial: client.razao_social,
         cnpj: client.cnpj,
+        documentType: client.document_type || 'cnpj',
         valorMensalidade: {
           smart: Number(client.valor_smart),
           apoio: Number(client.valor_apoio),
@@ -50,6 +51,7 @@ export const useClients = () => {
           nome_fantasia: client.nomeFantasia,
           razao_social: client.razaoSocial,
           cnpj: client.cnpj,
+          document_type: client.documentType,
           valor_smart: client.valorMensalidade.smart,
           valor_apoio: client.valorMensalidade.apoio,
           valor_contabilidade: client.valorMensalidade.contabilidade,
@@ -93,6 +95,7 @@ export const useClients = () => {
           nome_fantasia: client.nomeFantasia,
           razao_social: client.razaoSocial,
           cnpj: client.cnpj,
+          document_type: client.documentType,
           valor_smart: client.valorMensalidade.smart,
           valor_apoio: client.valorMensalidade.apoio,
           valor_contabilidade: client.valorMensalidade.contabilidade,

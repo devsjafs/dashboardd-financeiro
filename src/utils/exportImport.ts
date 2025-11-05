@@ -5,7 +5,8 @@ export const exportToCSV = (clients: Client[]) => {
     "Código",
     "Nome Fantasia",
     "Razão Social",
-    "CNPJ",
+    "Documento",
+    "Tipo Documento",
     "Valor Smart",
     "Valor Apoio",
     "Valor Contabilidade",
@@ -16,6 +17,7 @@ export const exportToCSV = (clients: Client[]) => {
     "Serviços",
     "Situação",
     "Status",
+    "Grupo",
   ];
 
   const rows = clients.map((client) => [
@@ -23,6 +25,7 @@ export const exportToCSV = (clients: Client[]) => {
     client.nomeFantasia,
     client.razaoSocial,
     client.cnpj,
+    client.documentType,
     client.valorMensalidade.smart,
     client.valorMensalidade.apoio,
     client.valorMensalidade.contabilidade,
@@ -33,6 +36,7 @@ export const exportToCSV = (clients: Client[]) => {
     client.services.join(";"),
     client.situacao,
     client.status,
+    client.grupo || "",
   ]);
 
   const csvContent = [
@@ -70,18 +74,20 @@ export const importFromCSV = (file: File): Promise<Omit<Client, "id" | "createdA
             nomeFantasia: cleanValues[1],
             razaoSocial: cleanValues[2],
             cnpj: cleanValues[3],
+            documentType: (cleanValues[4] || 'cnpj') as Client["documentType"],
             valorMensalidade: {
-              smart: parseFloat(cleanValues[4]) || 0,
-              apoio: parseFloat(cleanValues[5]) || 0,
-              contabilidade: parseFloat(cleanValues[6]) || 0,
-              personalite: parseFloat(cleanValues[7]) || 0,
+              smart: parseFloat(cleanValues[5]) || 0,
+              apoio: parseFloat(cleanValues[6]) || 0,
+              contabilidade: parseFloat(cleanValues[7]) || 0,
+              personalite: parseFloat(cleanValues[8]) || 0,
             },
-            vencimento: parseInt(cleanValues[8]) || 10,
-            inicioCompetencia: cleanValues[9],
-            ultimaCompetencia: cleanValues[10] || undefined,
-            services: cleanValues[11] ? cleanValues[11].split(";").filter(s => s) as Client["services"] : [],
-            situacao: (cleanValues[12] || 'mes-corrente') as Client["situacao"],
-            status: cleanValues[13] as Client["status"],
+            vencimento: parseInt(cleanValues[9]) || 10,
+            inicioCompetencia: cleanValues[10],
+            ultimaCompetencia: cleanValues[11] || undefined,
+            services: cleanValues[12] ? cleanValues[12].split(";").filter(s => s) as Client["services"] : [],
+            situacao: (cleanValues[13] || 'mes-corrente') as Client["situacao"],
+            status: cleanValues[14] as Client["status"],
+            grupo: cleanValues[15] || undefined,
           };
         });
 

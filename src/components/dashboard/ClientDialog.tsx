@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import * as z from "zod";
-import { Client, ClientStatus, ServiceType, ClientSituacao } from "@/types/client";
+import { Client, ClientStatus, ServiceType, ClientSituacao, DocumentType } from "@/types/client";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,8 @@ const formSchema = z.object({
   codigo: z.string().min(1, "Código é obrigatório"),
   nomeFantasia: z.string().min(1, "Nome fantasia é obrigatório"),
   razaoSocial: z.string().min(1, "Razão social é obrigatória"),
-  cnpj: z.string().regex(/^\d{14}$/, "CNPJ deve ter 14 dígitos"),
+  cnpj: z.string().min(1, "Documento é obrigatório"),
+  documentType: z.enum(["cnpj", "cpf", "caepf"]),
   valorSmart: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorApoio: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorContabilidade: z.coerce.number().min(0, "Valor deve ser positivo"),
@@ -42,7 +43,7 @@ const formSchema = z.object({
   inicioCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)"),
   ultimaCompetencia: z.string().regex(/^\d{4}-\d{2}$/, "Formato inválido (AAAA-MM)").optional().or(z.literal("")),
   services: z.array(z.enum(["smart", "apoio", "contabilidade", "personalite"])).min(1, "Selecione pelo menos um serviço"),
-  situacao: z.enum(["mes-vencido", "mes-corrente", "anual"]),
+  situacao: z.enum(["mes-vencido", "mes-corrente", "anual", "mes-corrente-vencido"]),
   status: z.enum(["ativo", "inativo", "sem-faturamento", "ex-cliente", "suspenso"]),
   grupo: z.string().optional().or(z.literal("")),
 });
@@ -62,6 +63,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       nomeFantasia: "",
       razaoSocial: "",
       cnpj: "",
+      documentType: "cnpj" as DocumentType,
       valorSmart: 0,
       valorApoio: 0,
       valorContabilidade: 0,
@@ -83,6 +85,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         nomeFantasia: client.nomeFantasia,
         razaoSocial: client.razaoSocial,
         cnpj: client.cnpj,
+        documentType: client.documentType,
         valorSmart: client.valorMensalidade.smart,
         valorApoio: client.valorMensalidade.apoio,
         valorContabilidade: client.valorMensalidade.contabilidade,
@@ -101,6 +104,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         nomeFantasia: "",
         razaoSocial: "",
         cnpj: "",
+        documentType: "cnpj" as DocumentType,
         valorSmart: 0,
         valorApoio: 0,
         valorContabilidade: 0,
@@ -122,6 +126,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       nomeFantasia: values.nomeFantasia,
       razaoSocial: values.razaoSocial,
       cnpj: values.cnpj,
+      documentType: values.documentType as DocumentType,
       valorMensalidade: {
         smart: values.valorSmart,
         apoio: values.valorApoio,
@@ -168,12 +173,35 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
 
               <FormField
                 control={form.control}
+                name="documentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Documento</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="caepf">CAEPF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="cnpj"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CNPJ</FormLabel>
+                    <FormLabel>Documento</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="00000000000000" maxLength={14} />
+                      <Input {...field} placeholder="Número do documento" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -360,6 +388,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                       <SelectContent>
                         <SelectItem value="mes-vencido">Mês Vencido</SelectItem>
                         <SelectItem value="mes-corrente">Mês Corrente</SelectItem>
+                        <SelectItem value="mes-corrente-vencido">Mês Corrente/Vencido</SelectItem>
                         <SelectItem value="anual">Anual</SelectItem>
                       </SelectContent>
                     </Select>
