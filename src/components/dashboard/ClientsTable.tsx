@@ -11,14 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, History, FileText } from "lucide-react";
+import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, ArrowUp, ArrowDown, History, FileText } from "lucide-react";
 import { ClientHistoryDialog } from "./ClientHistoryDialog";
 import { ClientNotesDialog } from "./ClientNotesDialog";
 
@@ -66,14 +59,25 @@ const situacaoLabels = {
   'anual': 'Anual'
 };
 
-type SortOption = "codigo" | "nome-az" | "nome-za" | "valor-asc" | "valor-desc" | "vencimento-asc" | "vencimento-desc";
+type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento";
+type SortDirection = "asc" | "desc";
 
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("codigo");
+  const [sortField, setSortField] = useState<SortField>("codigo");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
   const filteredAndSortedClients = clients
     .filter((client) => {
@@ -86,24 +90,24 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
       );
     })
     .sort((a, b) => {
-      switch (sortBy) {
+      let comparison = 0;
+      
+      switch (sortField) {
         case "codigo":
-          return parseInt(a.codigo) - parseInt(b.codigo);
-        case "nome-az":
-          return a.nomeFantasia.localeCompare(b.nomeFantasia);
-        case "nome-za":
-          return b.nomeFantasia.localeCompare(a.nomeFantasia);
-        case "valor-asc":
-          return getTotalMensalidade(a.valorMensalidade) - getTotalMensalidade(b.valorMensalidade);
-        case "valor-desc":
-          return getTotalMensalidade(b.valorMensalidade) - getTotalMensalidade(a.valorMensalidade);
-        case "vencimento-asc":
-          return a.vencimento - b.vencimento;
-        case "vencimento-desc":
-          return b.vencimento - a.vencimento;
-        default:
-          return 0;
+          comparison = parseInt(a.codigo) - parseInt(b.codigo);
+          break;
+        case "nomeFantasia":
+          comparison = a.nomeFantasia.localeCompare(b.nomeFantasia);
+          break;
+        case "valorMensalidade":
+          comparison = getTotalMensalidade(a.valorMensalidade) - getTotalMensalidade(b.valorMensalidade);
+          break;
+        case "vencimento":
+          comparison = a.vencimento - b.vencimento;
+          break;
       }
+      
+      return sortDirection === "asc" ? comparison : -comparison;
     });
 
   const formatCurrency = (value: number) => {
@@ -117,49 +121,71 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
     return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
   };
 
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="w-4 h-4 ml-1 opacity-40" />;
+    return sortDirection === "asc" 
+      ? <ArrowUp className="w-4 h-4 ml-1" />
+      : <ArrowDown className="w-4 h-4 ml-1" />;
+  };
+
   const getTotalMensalidade = (values: Client['valorMensalidade']) => {
     return values.smart + values.apoio + values.contabilidade + values.personalite;
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código, nome, razão social ou CNPJ..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-          <SelectTrigger className="w-[200px]">
-            <ArrowUpDown className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Ordenar por" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="codigo">Código</SelectItem>
-            <SelectItem value="nome-az">Nome (A-Z)</SelectItem>
-            <SelectItem value="nome-za">Nome (Z-A)</SelectItem>
-            <SelectItem value="valor-asc">Valor (Menor)</SelectItem>
-            <SelectItem value="valor-desc">Valor (Maior)</SelectItem>
-            <SelectItem value="vencimento-asc">Vencimento (1-31)</SelectItem>
-            <SelectItem value="vencimento-desc">Vencimento (31-1)</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por código, nome, razão social ou CNPJ..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Código</TableHead>
-              <TableHead className="font-semibold">Nome Fantasia</TableHead>
+              <TableHead 
+                className="font-semibold cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("codigo")}
+              >
+                <div className="flex items-center">
+                  Código
+                  {getSortIcon("codigo")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-semibold cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("nomeFantasia")}
+              >
+                <div className="flex items-center">
+                  Nome Fantasia
+                  {getSortIcon("nomeFantasia")}
+                </div>
+              </TableHead>
               <TableHead className="font-semibold">Razão Social</TableHead>
               <TableHead className="font-semibold">CNPJ</TableHead>
-              <TableHead className="font-semibold text-right">Mensalidade</TableHead>
-              <TableHead className="font-semibold">Vencimento</TableHead>
+              <TableHead 
+                className="font-semibold text-right cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("valorMensalidade")}
+              >
+                <div className="flex items-center justify-end">
+                  Mensalidade
+                  {getSortIcon("valorMensalidade")}
+                </div>
+              </TableHead>
+              <TableHead 
+                className="font-semibold cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("vencimento")}
+              >
+                <div className="flex items-center">
+                  Vencimento
+                  {getSortIcon("vencimento")}
+                </div>
+              </TableHead>
               <TableHead className="font-semibold">Serviços</TableHead>
               <TableHead className="font-semibold">Situação</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
