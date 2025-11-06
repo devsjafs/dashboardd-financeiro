@@ -178,7 +178,8 @@ const Index = () => {
           icon={Zap}
           iconColor="text-blue-500"
           bgColor="bg-blue-500/10"
-          subtitle={`${smartClientsCount} ${smartClientsCount === 1 ? 'cliente' : 'clientes'}`}
+          subtitle={String(smartClientsCount)}
+          subtitleSize="large"
         />
         <StatsCard
           title="Apoio"
@@ -189,7 +190,8 @@ const Index = () => {
           icon={Briefcase}
           iconColor="text-green-500"
           bgColor="bg-green-500/10"
-          subtitle={`${apoioClientsCount} ${apoioClientsCount === 1 ? 'cliente' : 'clientes'}`}
+          subtitle={String(apoioClientsCount)}
+          subtitleSize="large"
         />
         <StatsCard
           title="Contábil"
@@ -200,7 +202,8 @@ const Index = () => {
           icon={Calculator}
           iconColor="text-purple-500"
           bgColor="bg-purple-500/10"
-          subtitle={`${contabilClientsCount} ${contabilClientsCount === 1 ? 'cliente' : 'clientes'}`}
+          subtitle={String(contabilClientsCount)}
+          subtitleSize="large"
         />
         <StatsCard
           title="Personalite"
@@ -211,7 +214,8 @@ const Index = () => {
           icon={Crown}
           iconColor="text-amber-500"
           bgColor="bg-amber-500/10"
-          subtitle={`${personaliteClientsCount} ${personaliteClientsCount === 1 ? 'cliente' : 'clientes'}`}
+          subtitle={String(personaliteClientsCount)}
+          subtitleSize="large"
         />
         <StatsCard
           title="Receita Total"

@@ -70,7 +70,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -304,9 +304,27 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredAndSortedClients.length)} de {filteredAndSortedClients.length} clientes
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredAndSortedClients.length)} de {filteredAndSortedClients.length} clientes
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Itens por página:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={40}>40</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -317,7 +335,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
               Anterior
             </Button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              {Array.from({ length: Math.min(totalPages, 6) }, (_, i) => i + 1).map((page) => (
                 <Button
                   key={page}
                   variant={currentPage === page ? "default" : "outline"}
@@ -328,6 +346,19 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                   {page}
                 </Button>
               ))}
+              {totalPages > 6 && (
+                <>
+                  <span className="px-2 text-muted-foreground">...</span>
+                  <Button
+                    variant={currentPage === totalPages ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="w-10"
+                  >
+                    {totalPages}
+                  </Button>
+                </>
+              )}
             </div>
             <Button
               variant="outline"

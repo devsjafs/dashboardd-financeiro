@@ -73,14 +73,7 @@ export const PaymentDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Fix timezone issue by creating date at noon
-    const fixedFormData = {
-      ...formData,
-      vencimento: formData.vencimento ? `${formData.vencimento}T12:00:00` : formData.vencimento,
-    };
-    
-    await onSave(fixedFormData, formData.recorrente ? mesesRecorrencia : undefined);
+    await onSave(formData, formData.recorrente ? mesesRecorrencia : undefined);
   };
 
   return (
@@ -110,7 +103,7 @@ export const PaymentDialog = ({
             <Input
               id="vencimento"
               type="date"
-              value={formData.vencimento ? formData.vencimento.split('T')[0] : ''}
+              value={formData.vencimento}
               onChange={(e) =>
                 setFormData({ ...formData, vencimento: e.target.value })
               }

@@ -12,9 +12,10 @@ interface StatsCardProps {
   iconColor?: string;
   bgColor?: string;
   subtitle?: string;
+  subtitleSize?: 'small' | 'large';
 }
 
-export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary", bgColor = "bg-primary/10", subtitle }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary", bgColor = "bg-primary/10", subtitle, subtitleSize = 'small' }: StatsCardProps) {
   return (
     <Card className="relative overflow-hidden bg-gradient-card shadow-card border-border/50 hover:shadow-md transition-all duration-300">
       <div className="p-6">
@@ -32,7 +33,9 @@ export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-p
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold text-foreground">{value}</p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className={`${subtitleSize === 'large' ? 'text-3xl font-bold text-foreground' : 'text-xs text-muted-foreground'}`}>
+              {subtitle}
+            </p>
           )}
         </div>
       </div>

@@ -203,11 +203,6 @@ export function CommissionDialog({ open, onOpenChange, commissionId }: Commissio
                       <Input 
                         {...field} 
                         type="date"
-                        onChange={(e) => {
-                          // Fix timezone issue
-                          const value = e.target.value ? `${e.target.value}T12:00:00` : '';
-                          field.onChange(value.split('T')[0]);
-                        }}
                       />
                     </FormControl>
                     <FormMessage />
