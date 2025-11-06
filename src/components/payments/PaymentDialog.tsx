@@ -22,7 +22,7 @@ interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   payment?: Payment;
-  onSave: (data: PaymentFormData) => Promise<void>;
+  onSave: (data: PaymentFormData, meses?: number) => Promise<void>;
 }
 
 export const PaymentDialog = ({
@@ -41,6 +41,7 @@ export const PaymentDialog = ({
     intervalo_recorrencia: null,
     banco: null,
   });
+  const [mesesRecorrencia, setMesesRecorrencia] = useState<number>(1);
 
   useEffect(() => {
     if (payment) {
@@ -54,6 +55,7 @@ export const PaymentDialog = ({
         intervalo_recorrencia: payment.intervalo_recorrencia,
         banco: payment.banco || null,
       });
+      setMesesRecorrencia(1);
     } else {
       setFormData({
         descricao: "",
@@ -65,12 +67,20 @@ export const PaymentDialog = ({
         intervalo_recorrencia: null,
         banco: null,
       });
+      setMesesRecorrencia(1);
     }
   }, [payment, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave(formData);
+    
+    // Fix timezone issue by creating date at noon
+    const fixedFormData = {
+      ...formData,
+      vencimento: formData.vencimento ? `${formData.vencimento}T12:00:00` : formData.vencimento,
+    };
+    
+    await onSave(fixedFormData, formData.recorrente ? mesesRecorrencia : undefined);
   };
 
   return (
@@ -100,7 +110,7 @@ export const PaymentDialog = ({
             <Input
               id="vencimento"
               type="date"
-              value={formData.vencimento}
+              value={formData.vencimento ? formData.vencimento.split('T')[0] : ''}
               onChange={(e) =>
                 setFormData({ ...formData, vencimento: e.target.value })
               }
@@ -151,29 +161,42 @@ export const PaymentDialog = ({
           </div>
 
           {formData.recorrente && (
-            <div className="space-y-2">
-              <Label htmlFor="intervalo">Intervalo de recorrência</Label>
-              <Select
-                value={formData.intervalo_recorrencia || "mensal"}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    intervalo_recorrencia: value as any,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o intervalo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="semanal">Semanal</SelectItem>
-                  <SelectItem value="mensal">Mensal</SelectItem>
-                  <SelectItem value="trimestral">Trimestral</SelectItem>
-                  <SelectItem value="semestral">Semestral</SelectItem>
-                  <SelectItem value="anual">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="intervalo">Intervalo de recorrência</Label>
+                <Select
+                  value={formData.intervalo_recorrencia || "mensal"}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      intervalo_recorrencia: value as any,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o intervalo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="trimestral">Trimestral</SelectItem>
+                    <SelectItem value="semestral">Semestral</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="meses">Quantos meses se repete?</Label>
+                <Input
+                  id="meses"
+                  type="number"
+                  min="1"
+                  max="24"
+                  value={mesesRecorrencia}
+                  onChange={(e) => setMesesRecorrencia(parseInt(e.target.value) || 1)}
+                />
+              </div>
+            </>
           )}
 
           <div className="flex justify-end gap-3 pt-4">

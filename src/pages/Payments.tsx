@@ -89,12 +89,12 @@ const Payments = () => {
     markAsUnpaid.mutate(id);
   };
 
-  // Generate month options (current month ± 12 months)
+  // Generate month options (starting from November 2025, going 12 months forward)
   const generateMonthOptions = () => {
     const options = [];
-    const currentDate = new Date();
-    for (let i = -12; i <= 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+    const startDate = new Date(2025, 10, 1); // November 2025 (month is 0-indexed)
+    for (let i = 0; i <= 12; i++) {
+      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
       const value = date.toISOString().slice(0, 7);
       const label = date.toLocaleDateString("pt-BR", {
         month: "long",
@@ -184,7 +184,7 @@ const Payments = () => {
           if (!open) setEditingPaymentId(undefined);
         }}
         payment={editingPayment}
-        onSave={async (paymentData) => {
+        onSave={async (paymentData, meses) => {
           if (editingPayment) {
             await updatePayment.mutateAsync({
               ...paymentData,
@@ -193,7 +193,38 @@ const Payments = () => {
               updated_at: editingPayment.updated_at,
             });
           } else {
-            await createPayment.mutateAsync(paymentData);
+            // If recurrent and meses is specified, create multiple payments
+            if (paymentData.recorrente && meses && meses > 1) {
+              const payments = [];
+              const baseDate = new Date(paymentData.vencimento.split('T')[0]);
+              
+              for (let i = 0; i < meses; i++) {
+                const newDate = new Date(baseDate);
+                
+                if (paymentData.intervalo_recorrencia === 'semanal') {
+                  newDate.setDate(newDate.getDate() + (i * 7));
+                } else if (paymentData.intervalo_recorrencia === 'mensal') {
+                  newDate.setMonth(newDate.getMonth() + i);
+                } else if (paymentData.intervalo_recorrencia === 'trimestral') {
+                  newDate.setMonth(newDate.getMonth() + (i * 3));
+                } else if (paymentData.intervalo_recorrencia === 'semestral') {
+                  newDate.setMonth(newDate.getMonth() + (i * 6));
+                } else if (paymentData.intervalo_recorrencia === 'anual') {
+                  newDate.setFullYear(newDate.getFullYear() + i);
+                }
+                
+                payments.push({
+                  ...paymentData,
+                  vencimento: newDate.toISOString().split('T')[0],
+                });
+              }
+              
+              for (const payment of payments) {
+                await createPayment.mutateAsync(payment);
+              }
+            } else {
+              await createPayment.mutateAsync(paymentData);
+            }
           }
           setDialogOpen(false);
           setEditingPaymentId(undefined);

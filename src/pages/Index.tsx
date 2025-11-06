@@ -41,6 +41,11 @@ const Index = () => {
   const personaliteRevenue = activeClients.reduce((sum, c) => sum + c.valorMensalidade.personalite, 0);
   const totalRevenue = smartRevenue + apoioRevenue + contabilRevenue + personaliteRevenue;
 
+  const smartClientsCount = activeClients.filter(c => c.services.includes('smart')).length;
+  const apoioClientsCount = activeClients.filter(c => c.services.includes('apoio')).length;
+  const contabilClientsCount = activeClients.filter(c => c.services.includes('contabilidade')).length;
+  const personaliteClientsCount = activeClients.filter(c => c.services.includes('personalite')).length;
+
   // Obter lista de grupos únicos
   const groups = Array.from(new Set(clients.filter(c => c.grupo).map(c => c.grupo!)));
 
@@ -173,6 +178,7 @@ const Index = () => {
           icon={Zap}
           iconColor="text-blue-500"
           bgColor="bg-blue-500/10"
+          subtitle={`${smartClientsCount} ${smartClientsCount === 1 ? 'cliente' : 'clientes'}`}
         />
         <StatsCard
           title="Apoio"
@@ -183,6 +189,7 @@ const Index = () => {
           icon={Briefcase}
           iconColor="text-green-500"
           bgColor="bg-green-500/10"
+          subtitle={`${apoioClientsCount} ${apoioClientsCount === 1 ? 'cliente' : 'clientes'}`}
         />
         <StatsCard
           title="Contábil"
@@ -193,6 +200,7 @@ const Index = () => {
           icon={Calculator}
           iconColor="text-purple-500"
           bgColor="bg-purple-500/10"
+          subtitle={`${contabilClientsCount} ${contabilClientsCount === 1 ? 'cliente' : 'clientes'}`}
         />
         <StatsCard
           title="Personalite"
@@ -203,6 +211,7 @@ const Index = () => {
           icon={Crown}
           iconColor="text-amber-500"
           bgColor="bg-amber-500/10"
+          subtitle={`${personaliteClientsCount} ${personaliteClientsCount === 1 ? 'cliente' : 'clientes'}`}
         />
         <StatsCard
           title="Receita Total"

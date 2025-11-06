@@ -69,6 +69,8 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -110,6 +112,10 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
+  const totalPages = Math.ceil(filteredAndSortedClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedClients = filteredAndSortedClients.slice(startIndex, startIndex + itemsPerPage);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -117,8 +123,13 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
     }).format(value);
   };
 
-  const formatCNPJ = (cnpj: string) => {
-    return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const formatDocument = (document: string, type: string) => {
+    if (type === 'cnpj') {
+      return document.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    } else if (type === 'cpf' || type === 'caepf') {
+      return document.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    }
+    return document;
   };
 
   const getSortIcon = (field: SortField) => {
@@ -200,12 +211,12 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAndSortedClients.map((client) => (
+              paginatedClients.map((client) => (
                 <TableRow key={client.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell className="font-medium">{client.codigo}</TableCell>
                   <TableCell>{client.nomeFantasia}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">{client.razaoSocial}</TableCell>
-                  <TableCell className="font-mono text-sm">{formatCNPJ(client.cnpj)}</TableCell>
+                  <TableCell className="font-mono text-sm">{formatDocument(client.cnpj, client.documentType)}</TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatCurrency(getTotalMensalidade(client.valorMensalidade))}
                   </TableCell>
@@ -290,6 +301,45 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredAndSortedClients.length)} de {filteredAndSortedClients.length} clientes
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedClient && (
         <>

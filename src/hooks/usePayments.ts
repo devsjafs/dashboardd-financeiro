@@ -22,9 +22,17 @@ export const usePayments = () => {
 
   const createPayment = useMutation({
     mutationFn: async (payment: PaymentFormData) => {
+      // Fix timezone by ensuring date is stored correctly
+      const fixedPayment = {
+        ...payment,
+        vencimento: payment.vencimento.includes('T') 
+          ? payment.vencimento.split('T')[0] 
+          : payment.vencimento
+      };
+      
       const { data, error } = await supabase
         .from("payments")
-        .insert([payment])
+        .insert([fixedPayment])
         .select()
         .single();
 

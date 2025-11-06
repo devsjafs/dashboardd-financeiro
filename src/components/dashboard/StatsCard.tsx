@@ -11,9 +11,10 @@ interface StatsCardProps {
   };
   iconColor?: string;
   bgColor?: string;
+  subtitle?: string;
 }
 
-export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary", bgColor = "bg-primary/10" }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-primary", bgColor = "bg-primary/10", subtitle }: StatsCardProps) {
   return (
     <Card className="relative overflow-hidden bg-gradient-card shadow-card border-border/50 hover:shadow-md transition-all duration-300">
       <div className="p-6">
@@ -30,6 +31,9 @@ export function StatsCard({ title, value, icon: Icon, trend, iconColor = "text-p
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold text-foreground">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          )}
         </div>
       </div>
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-primary opacity-50" />
