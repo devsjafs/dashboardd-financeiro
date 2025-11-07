@@ -20,9 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, CheckCircle } from "lucide-react";
+import { CalendarIcon, CheckCircle, Edit } from "lucide-react";
 import { useCommissions } from "@/hooks/useCommissions";
 import { CommissionPayment } from "@/types/commission";
+import { TrimestreDetailsDialog } from "./TrimestreDetailsDialog";
 
 interface PaymentQuartersDialogProps {
   open: boolean;
@@ -40,6 +41,8 @@ export function PaymentQuartersDialog({
   const { markPaymentAsPaid, markPaymentAsUnpaid } = useCommissions();
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<CommissionPayment | null>(null);
 
   const handleMarkAsPaid = (paymentId: string) => {
     setSelectedPaymentId(paymentId);
@@ -60,6 +63,11 @@ export function PaymentQuartersDialog({
     markPaymentAsUnpaid.mutate(paymentId);
   };
 
+  const handleOpenDetails = (payment: CommissionPayment) => {
+    setSelectedPayment(payment);
+    setDetailsDialogOpen(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -76,6 +84,7 @@ export function PaymentQuartersDialog({
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data Pagamento</TableHead>
+                <TableHead>Detalhes</TableHead>
                 <TableHead className="text-right">Ação</TableHead>
               </TableRow>
             </TableHeader>
@@ -112,6 +121,15 @@ export function PaymentQuartersDialog({
                     {payment.data_pagamento
                       ? format(new Date(payment.data_pagamento), "dd/MM/yyyy")
                       : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDetails(payment)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
                   </TableCell>
                   <TableCell className="text-right">
                     {!payment.pago && (
@@ -166,6 +184,12 @@ export function PaymentQuartersDialog({
           </Table>
         </div>
       </DialogContent>
+      
+      <TrimestreDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        payment={selectedPayment}
+      />
     </Dialog>
   );
 }

@@ -153,9 +153,14 @@ export type Database = {
           created_at: string
           data_pagamento: string | null
           data_vencimento: string
+          documento: string | null
           fim_trimestre: string
           id: string
           inicio_trimestre: string
+          mes1_vencimento: string | null
+          mes2_vencimento: string | null
+          mes3_vencimento: string | null
+          metodo_pagamento: string | null
           pago: boolean
           preco: number
           trimestre_numero: number
@@ -166,9 +171,14 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           data_vencimento: string
+          documento?: string | null
           fim_trimestre: string
           id?: string
           inicio_trimestre: string
+          mes1_vencimento?: string | null
+          mes2_vencimento?: string | null
+          mes3_vencimento?: string | null
+          metodo_pagamento?: string | null
           pago?: boolean
           preco: number
           trimestre_numero: number
@@ -179,9 +189,14 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           data_vencimento?: string
+          documento?: string | null
           fim_trimestre?: string
           id?: string
           inicio_trimestre?: string
+          mes1_vencimento?: string | null
+          mes2_vencimento?: string | null
+          mes3_vencimento?: string | null
+          metodo_pagamento?: string | null
           pago?: boolean
           preco?: number
           trimestre_numero?: number

@@ -36,6 +36,8 @@ export function CommissionsTable({ commissions, payments, onEdit }: CommissionsT
   const { deleteCommission } = useCommissions();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedCommissionId, setSelectedCommissionId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'client' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const handleDelete = () => {
     if (deleteId) {
@@ -55,6 +57,26 @@ export function CommissionsTable({ commissions, payments, onEdit }: CommissionsT
     return { paidCount, totalCount };
   };
 
+  const handleSort = (field: 'client') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const sortedCommissions = [...commissions].sort((a, b) => {
+    if (sortBy === 'client') {
+      const nameA = a.clients?.nome_fantasia || '';
+      const nameB = b.clients?.nome_fantasia || '';
+      return sortOrder === 'asc' 
+        ? nameA.localeCompare(nameB) 
+        : nameB.localeCompare(nameA);
+    }
+    return 0;
+  });
+
   return (
     <>
       <Card className="bg-gradient-card shadow-card border-border/50">
@@ -62,7 +84,12 @@ export function CommissionsTable({ commissions, payments, onEdit }: CommissionsT
           <Table>
             <TableHeader>
               <TableRow className="border-border/50 hover:bg-muted/30">
-                <TableHead>Cliente</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:text-primary"
+                  onClick={() => handleSort('client')}
+                >
+                  Cliente {sortBy === 'client' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </TableHead>
                 <TableHead>Vendedor</TableHead>
                 <TableHead>Início</TableHead>
                 <TableHead>Duração</TableHead>
@@ -73,10 +100,17 @@ export function CommissionsTable({ commissions, payments, onEdit }: CommissionsT
               </TableRow>
             </TableHeader>
             <TableBody>
-              {commissions.map((commission) => {
+              {sortedCommissions.map((commission) => {
                 const { paidCount, totalCount } = getPaymentStatus(commission.id);
+                const progressPercent = totalCount > 0 ? (paidCount / totalCount) * 100 : 0;
                 return (
-                  <TableRow key={commission.id} className="border-border/50 hover:bg-muted/20">
+                  <TableRow 
+                    key={commission.id} 
+                    className="border-border/50 hover:bg-muted/20 relative"
+                    style={{
+                      background: `linear-gradient(to right, hsl(142 76% 36% / 0.15) ${progressPercent}%, hsl(0 84% 60% / 0.15) ${progressPercent}%)`
+                    }}
+                  >
                     <TableCell className="font-medium">
                       {commission.clients?.nome_fantasia || "N/A"}
                     </TableCell>
@@ -95,13 +129,15 @@ export function CommissionsTable({ commissions, payments, onEdit }: CommissionsT
                       }).format(commission.valor_base)}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedCommissionId(commission.id)}
-                      >
-                        {paidCount}/{totalCount} trimestres
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedCommissionId(commission.id)}
+                        >
+                          {paidCount}/{totalCount} trimestres
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

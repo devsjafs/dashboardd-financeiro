@@ -89,21 +89,38 @@ export function CommissionDialog({ open, onOpenChange, commissionId }: Commissio
     const valorComissao = (parseFloat(values.valor_base) * 3 * parseFloat(values.percentual_comissao)) / 100;
     const diaVencimento = parseInt(values.dia_vencimento);
     
+    // Parse date string correctly
+    const [year, month, day] = values.inicio_periodo.split('-').map(Number);
+    
     const payments = [];
     for (let i = 0; i < numTrimestres; i++) {
-      const inicioTrimestre = addMonths(new Date(values.inicio_periodo), i * 3);
-      const fimTrimestre = addMonths(inicioTrimestre, 2);
+      // Calculate start of quarter
+      let startMonth = month + (i * 3);
+      let startYear = year;
+      while (startMonth > 12) {
+        startMonth -= 12;
+        startYear += 1;
+      }
       
-      // Calcular vencimento (último mês do trimestre, no dia especificado)
-      const vencimento = new Date(fimTrimestre);
-      vencimento.setDate(diaVencimento);
+      // Calculate end of quarter (2 months later)
+      let endMonth = startMonth + 2;
+      let endYear = startYear;
+      while (endMonth > 12) {
+        endMonth -= 12;
+        endYear += 1;
+      }
+      
+      // Vencimento is end of quarter with specified day
+      const vencimentoDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(diaVencimento).padStart(2, '0')}`;
+      const inicioDate = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const fimDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       payments.push({
         commission_id: commissionId,
         trimestre_numero: i + 1,
-        inicio_trimestre: format(inicioTrimestre, "yyyy-MM-dd"),
-        fim_trimestre: format(fimTrimestre, "yyyy-MM-dd"),
-        data_vencimento: format(vencimento, "yyyy-MM-dd"),
+        inicio_trimestre: inicioDate,
+        fim_trimestre: fimDate,
+        data_vencimento: vencimentoDate,
         preco: valorComissao,
         pago: false,
         data_pagamento: null,

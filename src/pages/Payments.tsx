@@ -196,26 +196,48 @@ const Payments = () => {
             // If recurrent and meses is specified, create multiple payments
             if (paymentData.recorrente && meses && meses > 1) {
               const payments = [];
-              const baseDate = new Date(paymentData.vencimento.split('T')[0]);
+              const baseDateStr = paymentData.vencimento.includes('T') 
+                ? paymentData.vencimento.split('T')[0] 
+                : paymentData.vencimento;
+              const [year, month, day] = baseDateStr.split('-').map(Number);
               
               for (let i = 0; i < meses; i++) {
-                const newDate = new Date(baseDate);
+                let newYear = year;
+                let newMonth = month;
+                let newDay = day;
                 
                 if (paymentData.intervalo_recorrencia === 'semanal') {
-                  newDate.setDate(newDate.getDate() + (i * 7));
+                  const newDate = new Date(year, month - 1, day + (i * 7));
+                  newYear = newDate.getFullYear();
+                  newMonth = newDate.getMonth() + 1;
+                  newDay = newDate.getDate();
                 } else if (paymentData.intervalo_recorrencia === 'mensal') {
-                  newDate.setMonth(newDate.getMonth() + i);
+                  newMonth = month + i;
+                  while (newMonth > 12) {
+                    newMonth -= 12;
+                    newYear += 1;
+                  }
                 } else if (paymentData.intervalo_recorrencia === 'trimestral') {
-                  newDate.setMonth(newDate.getMonth() + (i * 3));
+                  newMonth = month + (i * 3);
+                  while (newMonth > 12) {
+                    newMonth -= 12;
+                    newYear += 1;
+                  }
                 } else if (paymentData.intervalo_recorrencia === 'semestral') {
-                  newDate.setMonth(newDate.getMonth() + (i * 6));
+                  newMonth = month + (i * 6);
+                  while (newMonth > 12) {
+                    newMonth -= 12;
+                    newYear += 1;
+                  }
                 } else if (paymentData.intervalo_recorrencia === 'anual') {
-                  newDate.setFullYear(newDate.getFullYear() + i);
+                  newYear = year + i;
                 }
+                
+                const formattedDate = `${newYear}-${String(newMonth).padStart(2, '0')}-${String(newDay).padStart(2, '0')}`;
                 
                 payments.push({
                   ...paymentData,
-                  vencimento: newDate.toISOString().split('T')[0],
+                  vencimento: formattedDate,
                 });
               }
               
