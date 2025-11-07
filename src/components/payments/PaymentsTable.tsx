@@ -10,8 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 interface PaymentsTableProps {
   payments: Payment[];
@@ -30,7 +28,9 @@ export const PaymentsTable = ({ payments, onEdit, onDelete, onMarkAsPaid, onMark
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd/MM/yyyy", { locale: ptBR });
+    if (!dateString) return "-";
+    const [y, m, d] = dateString.split("-");
+    return `${d}/${m}/${y}`;
   };
 
   return (
