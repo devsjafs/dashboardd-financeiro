@@ -207,10 +207,17 @@ const Payments = () => {
                 let newDay = day;
                 
                 if (paymentData.intervalo_recorrencia === 'semanal') {
-                  const newDate = new Date(year, month - 1, day + (i * 7));
-                  newYear = newDate.getFullYear();
-                  newMonth = newDate.getMonth() + 1;
-                  newDay = newDate.getDate();
+                  // Add weeks without timezone issues
+                  const totalDays = i * 7;
+                  const daysToAdd = totalDays;
+                  
+                  // Simple date arithmetic
+                  const tempDate = new Date(year, month - 1, day);
+                  tempDate.setDate(tempDate.getDate() + daysToAdd);
+                  
+                  newYear = tempDate.getFullYear();
+                  newMonth = tempDate.getMonth() + 1;
+                  newDay = tempDate.getDate();
                 } else if (paymentData.intervalo_recorrencia === 'mensal') {
                   newMonth = month + i;
                   while (newMonth > 12) {

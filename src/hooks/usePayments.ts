@@ -106,11 +106,18 @@ export const usePayments = () => {
 
   const markAsPaid = useMutation({
     mutationFn: async ({ id, banco }: { id: string; banco?: string }) => {
+      // Get current date in local timezone
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const localDateString = `${year}-${month}-${day}`;
+      
       const { data, error } = await supabase
         .from("payments")
         .update({
           status: "pago",
-          data_pagamento: new Date().toISOString().split("T")[0],
+          data_pagamento: localDateString,
           banco: banco || null,
         })
         .eq("id", id)

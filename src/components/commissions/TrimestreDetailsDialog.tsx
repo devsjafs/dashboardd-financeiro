@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatMonthYear } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -85,8 +84,7 @@ export function TrimestreDetailsDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm text-muted-foreground">
-            Período: {format(new Date(payment.inicio_trimestre), "MMM/yyyy", { locale: ptBR })} -{" "}
-            {format(new Date(payment.fim_trimestre), "MMM/yyyy", { locale: ptBR })}
+            Período: {formatMonthYear(payment.inicio_trimestre)} - {formatMonthYear(payment.fim_trimestre)}
           </div>
 
           <div className="space-y-2">

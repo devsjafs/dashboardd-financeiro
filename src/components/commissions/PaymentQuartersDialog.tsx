@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatMonthYear, formatDateString } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -50,9 +48,15 @@ export function PaymentQuartersDialog({
 
   const confirmPayment = () => {
     if (selectedPaymentId && selectedDate) {
+      // Format date manually to avoid timezone issues
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
       markPaymentAsPaid.mutate({
         id: selectedPaymentId,
-        data_pagamento: format(selectedDate, "yyyy-MM-dd"),
+        data_pagamento: dateString,
       });
       setSelectedPaymentId(null);
       setSelectedDate(undefined);
@@ -93,11 +97,10 @@ export function PaymentQuartersDialog({
                 <TableRow key={payment.id}>
                   <TableCell>{payment.trimestre_numero}º</TableCell>
                   <TableCell>
-                    {format(new Date(payment.inicio_trimestre), "MMM/yyyy", { locale: ptBR })} -{" "}
-                    {format(new Date(payment.fim_trimestre), "MMM/yyyy", { locale: ptBR })}
+                    {formatMonthYear(payment.inicio_trimestre)} - {formatMonthYear(payment.fim_trimestre)}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(payment.data_vencimento), "dd/MM/yyyy")}
+                    {formatDateString(payment.data_vencimento)}
                   </TableCell>
                   <TableCell>
                     {new Intl.NumberFormat("pt-BR", {
@@ -118,9 +121,7 @@ export function PaymentQuartersDialog({
                     )}
                   </TableCell>
                   <TableCell>
-                    {payment.data_pagamento
-                      ? format(new Date(payment.data_pagamento), "dd/MM/yyyy")
-                      : "-"}
+                    {payment.data_pagamento ? formatDateString(payment.data_pagamento) : "-"}
                   </TableCell>
                   <TableCell>
                     <Button
