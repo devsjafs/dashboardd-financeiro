@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      boletos: {
+        Row: {
+          categoria: string
+          client_id: string
+          competencia: string
+          created_at: string
+          data_pagamento: string | null
+          id: string
+          status: string
+          updated_at: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          categoria: string
+          client_id: string
+          competencia: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          categoria?: string
+          client_id?: string
+          competencia?: string
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boletos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_history: {
         Row: {
           changed_at: string
@@ -87,6 +134,7 @@ export type Database = {
           codigo: string
           created_at: string
           document_type: string | null
+          email: string | null
           grupo: string | null
           id: string
           inicio_competencia: string
@@ -108,6 +156,7 @@ export type Database = {
           codigo: string
           created_at?: string
           document_type?: string | null
+          email?: string | null
           grupo?: string | null
           id?: string
           inicio_competencia: string
@@ -129,6 +178,7 @@ export type Database = {
           codigo?: string
           created_at?: string
           document_type?: string | null
+          email?: string | null
           grupo?: string | null
           id?: string
           inicio_competencia?: string

@@ -35,6 +35,7 @@ const formSchema = z.object({
   razaoSocial: z.string().min(1, "Razão social é obrigatória"),
   cnpj: z.string().min(1, "Documento é obrigatório"),
   documentType: z.enum(["cnpj", "cpf", "caepf"]),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
   valorSmart: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorApoio: z.coerce.number().min(0, "Valor deve ser positivo"),
   valorContabilidade: z.coerce.number().min(0, "Valor deve ser positivo"),
@@ -64,6 +65,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       razaoSocial: "",
       cnpj: "",
       documentType: "cnpj" as DocumentType,
+      email: "",
       valorSmart: 0,
       valorApoio: 0,
       valorContabilidade: 0,
@@ -86,6 +88,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         razaoSocial: client.razaoSocial,
         cnpj: client.cnpj,
         documentType: client.documentType,
+        email: (client as any).email || "",
         valorSmart: client.valorMensalidade.smart,
         valorApoio: client.valorMensalidade.apoio,
         valorContabilidade: client.valorMensalidade.contabilidade,
@@ -105,6 +108,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         razaoSocial: "",
         cnpj: "",
         documentType: "cnpj" as DocumentType,
+        email: "",
         valorSmart: 0,
         valorApoio: 0,
         valorContabilidade: 0,
@@ -127,6 +131,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       razaoSocial: values.razaoSocial,
       cnpj: values.cnpj,
       documentType: values.documentType as DocumentType,
+      email: values.email || undefined,
       valorMensalidade: {
         smart: values.valorSmart,
         apoio: values.valorApoio,
@@ -140,7 +145,7 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       situacao: values.situacao as ClientSituacao,
       status: values.status as ClientStatus,
       grupo: values.grupo || undefined,
-    });
+    } as any);
     form.reset();
   };
 
@@ -216,6 +221,20 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                     <FormLabel>Nome Fantasia</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="email@exemplo.com" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

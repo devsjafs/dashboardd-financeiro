@@ -7,6 +7,8 @@ import { MainLayout } from "./components/layout/MainLayout";
 import Index from "./pages/Index";
 import Payments from "./pages/Payments";
 import Commissions from "./pages/Commissions";
+import Boletos from "./pages/Boletos";
+import Emails from "./pages/Emails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/pagamentos" element={<Payments />} />
             <Route path="/comissoes" element={<Commissions />} />
+            <Route path="/boletos" element={<Boletos />} />
+            <Route path="/emails" element={<Emails />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
