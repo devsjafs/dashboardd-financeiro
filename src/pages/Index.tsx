@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useClients } from "@/hooks/useClients";
-import { exportToCSV, importFromCSV } from "@/utils/exportImport";
+import { exportToXLSX, importFromXLSX, downloadClientTemplate } from "@/utils/exportImport";
+import { ImportDialog } from "@/components/dashboard/ImportDialog";
 import {
   Zap,
   Briefcase,
@@ -28,7 +29,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<ServiceType | "all" | "grupos">("all");
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { toast } = useToast();
   const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
 
@@ -83,19 +84,16 @@ const Index = () => {
   };
 
   const handleExport = () => {
-    exportToCSV(clients);
+    exportToXLSX(clients);
     toast({
       title: "Dados exportados",
-      description: "Os dados foram exportados para CSV com sucesso.",
+      description: "Os dados foram exportados para XLSX com sucesso.",
     });
   };
 
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const handleImport = async (file: File) => {
     try {
-      const importedClients = await importFromCSV(file);
+      const importedClients = await importFromXLSX(file);
       for (const client of importedClients) {
         await createClient.mutateAsync(client);
       }
@@ -109,10 +107,6 @@ const Index = () => {
         description: "Ocorreu um erro ao importar os dados.",
         variant: "destructive",
       });
-    }
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 
@@ -135,16 +129,9 @@ const Index = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleImport}
-            className="hidden"
-          />
           <Button
             variant="outline"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setImportDialogOpen(true)}
             className="gap-2"
           >
             <Upload className="w-4 h-4" />
@@ -328,6 +315,16 @@ const Index = () => {
         clients={selectedGroupClients}
         onEdit={handleEdit}
         onDelete={handleDelete}
+      />
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImport={handleImport}
+        onDownloadTemplate={downloadClientTemplate}
+        title="Importar Clientes"
+        description="Baixe o modelo XLSX, preencha com os dados dos clientes e importe o arquivo."
       />
     </div>
   );

@@ -28,6 +28,7 @@ export interface Client {
   situacao: ClientSituacao;
   status: ClientStatus;
   grupo?: string;
+  email?: string;
   createdAt: string;
   updatedAt: string;
 }

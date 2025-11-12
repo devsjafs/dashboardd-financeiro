@@ -1,103 +1,105 @@
 import { Client } from "@/types/client";
+import * as XLSX from "xlsx";
 
-export const exportToCSV = (clients: Client[]) => {
-  const headers = [
-    "Código",
-    "Nome Fantasia",
-    "Razão Social",
-    "Documento",
-    "Tipo Documento",
-    "Valor Smart",
-    "Valor Apoio",
-    "Valor Contabilidade",
-    "Valor Personalite",
-    "Vencimento",
-    "Início Competência",
-    "Última Competência",
-    "Serviços",
-    "Situação",
-    "Status",
-    "Grupo",
-  ];
+export const exportToXLSX = (clients: Client[]) => {
+  const data = clients.map((client) => ({
+    "Código": client.codigo,
+    "Nome Fantasia": client.nomeFantasia,
+    "Razão Social": client.razaoSocial,
+    "Documento": client.cnpj,
+    "Tipo Documento": client.documentType,
+    "Valor Smart": client.valorMensalidade.smart,
+    "Valor Apoio": client.valorMensalidade.apoio,
+    "Valor Contabilidade": client.valorMensalidade.contabilidade,
+    "Valor Personalite": client.valorMensalidade.personalite,
+    "Vencimento": client.vencimento,
+    "Início Competência": client.inicioCompetencia,
+    "Última Competência": client.ultimaCompetencia || "",
+    "Serviços": client.services.join(";"),
+    "Situação": client.situacao,
+    "Status": client.status,
+    "Grupo": client.grupo || "",
+    "Email": client.email || "",
+  }));
 
-  const rows = clients.map((client) => [
-    client.codigo,
-    client.nomeFantasia,
-    client.razaoSocial,
-    client.cnpj,
-    client.documentType,
-    client.valorMensalidade.smart,
-    client.valorMensalidade.apoio,
-    client.valorMensalidade.contabilidade,
-    client.valorMensalidade.personalite,
-    client.vencimento,
-    client.inicioCompetencia,
-    client.ultimaCompetencia || "",
-    client.services.join(";"),
-    client.situacao,
-    client.status,
-    client.grupo || "",
-  ]);
-
-  const csvContent = [
-    headers.join(","),
-    ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-  ].join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", `clientes_${new Date().toISOString().split("T")[0]}.csv`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
+  
+  XLSX.writeFile(workbook, `clientes_${new Date().toISOString().split("T")[0]}.xlsx`);
 };
 
-export const importFromCSV = (file: File): Promise<Omit<Client, "id" | "createdAt" | "updatedAt">[]> => {
+export const importFromXLSX = (file: File): Promise<Omit<Client, "id" | "createdAt" | "updatedAt">[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = (e) => {
       try {
-        const text = e.target?.result as string;
-        const lines = text.split("\n").filter((line) => line.trim());
-        const headers = lines[0].split(",");
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
 
-        const clients = lines.slice(1).map((line) => {
-          const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
-          const cleanValues = values.map((v) => v.replace(/^"|"$/g, "").trim());
-
-          return {
-            codigo: cleanValues[0],
-            nomeFantasia: cleanValues[1],
-            razaoSocial: cleanValues[2],
-            cnpj: cleanValues[3],
-            documentType: (cleanValues[4] || 'cnpj') as Client["documentType"],
-            valorMensalidade: {
-              smart: parseFloat(cleanValues[5]) || 0,
-              apoio: parseFloat(cleanValues[6]) || 0,
-              contabilidade: parseFloat(cleanValues[7]) || 0,
-              personalite: parseFloat(cleanValues[8]) || 0,
-            },
-            vencimento: parseInt(cleanValues[9]) || 10,
-            inicioCompetencia: cleanValues[10],
-            ultimaCompetencia: cleanValues[11] || undefined,
-            services: cleanValues[12] ? cleanValues[12].split(";").filter(s => s) as Client["services"] : [],
-            situacao: (cleanValues[13] || 'mes-corrente') as Client["situacao"],
-            status: cleanValues[14] as Client["status"],
-            grupo: cleanValues[15] || undefined,
-          };
-        });
+        const clients = jsonData.map((row) => ({
+          codigo: String(row["Código"] || ""),
+          nomeFantasia: String(row["Nome Fantasia"] || ""),
+          razaoSocial: String(row["Razão Social"] || ""),
+          cnpj: String(row["Documento"] || ""),
+          documentType: (row["Tipo Documento"] || 'cnpj') as Client["documentType"],
+          valorMensalidade: {
+            smart: Number(row["Valor Smart"]) || 0,
+            apoio: Number(row["Valor Apoio"]) || 0,
+            contabilidade: Number(row["Valor Contabilidade"]) || 0,
+            personalite: Number(row["Valor Personalite"]) || 0,
+          },
+          vencimento: Number(row["Vencimento"]) || 10,
+          inicioCompetencia: String(row["Início Competência"] || ""),
+          ultimaCompetencia: row["Última Competência"] ? String(row["Última Competência"]) : undefined,
+          services: row["Serviços"] 
+            ? String(row["Serviços"]).split(";").filter(s => s) as Client["services"]
+            : [],
+          situacao: (row["Situação"] || 'mes-corrente') as Client["situacao"],
+          status: String(row["Status"]) as Client["status"],
+          grupo: row["Grupo"] ? String(row["Grupo"]) : undefined,
+          email: row["Email"] ? String(row["Email"]) : undefined,
+        }));
 
         resolve(clients);
       } catch (error) {
-        reject(new Error("Erro ao processar arquivo CSV"));
+        reject(new Error("Erro ao processar arquivo XLSX"));
       }
     };
 
     reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-    reader.readAsText(file);
+    reader.readAsBinaryString(file);
   });
+};
+
+export const downloadClientTemplate = () => {
+  const templateData = [{
+    "Código": "001",
+    "Nome Fantasia": "Empresa Exemplo",
+    "Razão Social": "Empresa Exemplo LTDA",
+    "Documento": "00.000.000/0000-00",
+    "Tipo Documento": "cnpj",
+    "Valor Smart": 0,
+    "Valor Apoio": 0,
+    "Valor Contabilidade": 0,
+    "Valor Personalite": 0,
+    "Vencimento": 10,
+    "Início Competência": "2025-01",
+    "Última Competência": "",
+    "Serviços": "smart;contabilidade",
+    "Situação": "mes-corrente",
+    "Status": "ativo",
+    "Grupo": "",
+    "Email": "contato@empresa.com",
+  }];
+
+  const worksheet = XLSX.utils.json_to_sheet(templateData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Clientes");
+  
+  XLSX.writeFile(workbook, "modelo_clientes.xlsx");
 };
