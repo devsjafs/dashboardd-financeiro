@@ -56,11 +56,17 @@ export const useNiboImport = () => {
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const stakeholderName = item.stakeholder?.name || item.stakeholderName || "";
+        // Match by CNPJ/CPF (document) instead of name
+        const stakeholderDoc = (
+          item.stakeholder?.document || 
+          item.stakeholder?.cpfCnpj || 
+          item.stakeholder?.taxNumber || 
+          item.stakeholderDocument || 
+          ""
+        ).replace(/\D/g, ""); // Remove formatting
+
         const client = clients?.find(
-          (c) =>
-            c.nome_fantasia?.toLowerCase() === stakeholderName.toLowerCase() ||
-            c.razao_social?.toLowerCase() === stakeholderName.toLowerCase()
+          (c) => c.cnpj?.replace(/\D/g, "") === stakeholderDoc && stakeholderDoc !== ""
         );
 
         if (!client) {
