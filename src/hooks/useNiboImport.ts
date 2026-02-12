@@ -3,13 +3,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
+interface ImportProgress {
+  current: number;
+  total: number;
+  imported: number;
+  skipped: number;
+}
+
 export const useNiboImport = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
 
   const importFromNibo = async (connectionId?: string) => {
     setImporting(true);
+    setProgress({ current: 0, total: 0, imported: 0, skipped: 0 });
     try {
       const { data, error } = await supabase.functions.invoke("fetch-nibo-boletos", {
         body: { connection_id: connectionId || null },
@@ -18,12 +27,14 @@ export const useNiboImport = () => {
       if (error) {
         toast({ title: "Erro", description: error.message || "Erro ao buscar boletos do Nibo.", variant: "destructive" });
         setImporting(false);
+        setProgress(null);
         return;
       }
 
       if (data?.error) {
         toast({ title: "Erro", description: data.error, variant: "destructive" });
         setImporting(false);
+        setProgress(null);
         return;
       }
 
@@ -31,6 +42,7 @@ export const useNiboImport = () => {
       if (!Array.isArray(items) || items.length === 0) {
         toast({ title: "Nenhum boleto encontrado", description: "Não há recebimentos vencidos no Nibo." });
         setImporting(false);
+        setProgress(null);
         return;
       }
 
@@ -38,8 +50,12 @@ export const useNiboImport = () => {
 
       let imported = 0;
       let skipped = 0;
+      const total = items.length;
 
-      for (const item of items) {
+      setProgress({ current: 0, total, imported: 0, skipped: 0 });
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
         const stakeholderName = item.stakeholder?.name || item.stakeholderName || "";
         const client = clients?.find(
           (c) =>
@@ -47,7 +63,11 @@ export const useNiboImport = () => {
             c.razao_social?.toLowerCase() === stakeholderName.toLowerCase()
         );
 
-        if (!client) { skipped++; continue; }
+        if (!client) {
+          skipped++;
+          setProgress({ current: i + 1, total, imported, skipped });
+          continue;
+        }
 
         const dueDate = item.dueDate?.split("T")[0] || "";
         const competencia = dueDate ? dueDate.substring(0, 7) : "";
@@ -60,7 +80,11 @@ export const useNiboImport = () => {
           .eq("valor", item.value || 0)
           .limit(1);
 
-        if (existing && existing.length > 0) { skipped++; continue; }
+        if (existing && existing.length > 0) {
+          skipped++;
+          setProgress({ current: i + 1, total, imported, skipped });
+          continue;
+        }
 
         await supabase.from("boletos").insert({
           client_id: client.id,
@@ -71,6 +95,7 @@ export const useNiboImport = () => {
           status: "não pago",
         });
         imported++;
+        setProgress({ current: i + 1, total, imported, skipped });
       }
 
       queryClient.invalidateQueries({ queryKey: ["boletos"] });
@@ -82,7 +107,8 @@ export const useNiboImport = () => {
       toast({ title: "Erro", description: err.message || "Erro ao importar boletos do Nibo.", variant: "destructive" });
     }
     setImporting(false);
+    setProgress(null);
   };
 
-  return { importFromNibo, importing };
+  return { importFromNibo, importing, progress };
 };
