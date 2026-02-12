@@ -77,6 +77,10 @@ Deno.serve(async (req) => {
       const niboData = await niboResponse.json();
       const items = niboData?.items || niboData || [];
       if (Array.isArray(items)) {
+        if (items.length > 0) {
+          console.log(`Sample item keys for ${conn.nome}:`, JSON.stringify(Object.keys(items[0])));
+          console.log(`Sample stakeholder for ${conn.nome}:`, JSON.stringify(items[0].stakeholder));
+        }
         allItems.push(...items.map((item: any) => ({ ...item, _connectionName: conn.nome })));
       }
     }
