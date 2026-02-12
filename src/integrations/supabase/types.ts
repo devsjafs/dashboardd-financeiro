@@ -306,6 +306,33 @@ export type Database = {
           },
         ]
       }
+      nibo_connections: {
+        Row: {
+          api_key: string
+          api_token: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          api_token: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          api_token?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           banco: string | null

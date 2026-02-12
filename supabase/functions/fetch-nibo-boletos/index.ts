@@ -15,56 +15,74 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get Nibo API token from settings
-    const { data: setting, error: settingError } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'nibo_api_token')
-      .single();
+    // Get connection_id from request body
+    const body = await req.json().catch(() => ({}));
+    const connectionId = body.connection_id; // optional, if not provided fetch all
 
-    if (settingError || !setting) {
-      return new Response(
-        JSON.stringify({ error: 'Token do Nibo não configurado. Vá em Configurações para adicionar.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let connections: any[] = [];
+
+    if (connectionId) {
+      const { data, error } = await supabase
+        .from('nibo_connections')
+        .select('*')
+        .eq('id', connectionId)
+        .single();
+      if (error || !data) {
+        return new Response(
+          JSON.stringify({ error: 'Conexão não encontrada.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      connections = [data];
+    } else {
+      const { data, error } = await supabase
+        .from('nibo_connections')
+        .select('*');
+      if (error || !data || data.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Nenhuma conexão Nibo configurada. Vá em Configurações para adicionar.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      connections = data;
     }
-
-    const apiToken = setting.value;
 
     // Calculate yesterday's date
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    // Fetch overdue receivables from Nibo (credit/opened with dueDate filter)
-    // Using OData filter for dueDate <= yesterday
-    const filter = `dueDate le ${yesterdayStr}`;
-    const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$filter=${encodeURIComponent(filter)}&$orderby=dueDate&$top=500`;
+    const allItems: any[] = [];
 
-    console.log('Fetching from Nibo:', niboUrl);
+    for (const conn of connections) {
+      const apiToken = conn.api_token;
+      const filter = `dueDate le ${yesterdayStr}`;
+      const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$filter=${encodeURIComponent(filter)}&$orderby=dueDate&$top=500`;
 
-    const niboResponse = await fetch(niboUrl, {
-      method: 'GET',
-      headers: {
+      console.log(`Fetching from Nibo (${conn.nome}):`, niboUrl);
+
+      const headers: Record<string, string> = {
         'ApiToken': apiToken,
         'Accept': 'application/json',
-      },
-    });
+      };
 
-    if (!niboResponse.ok) {
-      const errorText = await niboResponse.text();
-      console.error('Nibo API error:', niboResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `Erro na API do Nibo [${niboResponse.status}]: ${errorText}` }),
-        { status: niboResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const niboResponse = await fetch(niboUrl, { method: 'GET', headers });
+
+      if (!niboResponse.ok) {
+        const errorText = await niboResponse.text();
+        console.error(`Nibo API error for ${conn.nome}:`, niboResponse.status, errorText);
+        continue; // Skip failed connections, don't abort all
+      }
+
+      const niboData = await niboResponse.json();
+      const items = niboData?.items || niboData || [];
+      if (Array.isArray(items)) {
+        allItems.push(...items.map((item: any) => ({ ...item, _connectionName: conn.nome })));
+      }
     }
 
-    const niboData = await niboResponse.json();
-    console.log('Nibo response count:', niboData.count || niboData.items?.length);
-
     return new Response(
-      JSON.stringify(niboData),
+      JSON.stringify({ items: allItems, count: allItems.length }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
