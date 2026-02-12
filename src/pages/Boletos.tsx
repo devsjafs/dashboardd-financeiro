@@ -10,6 +10,7 @@ import { BoletoStatsCard } from "@/components/boletos/BoletoStatsCard";
 import { BoletoFormData, BoletoWithClient } from "@/types/boleto";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImportDialog } from "@/components/dashboard/ImportDialog";
+import { NiboImportDialog } from "@/components/boletos/NiboImportDialog";
 import { exportBoletosToXLSX, importBoletosFromXLSX, downloadBoletoTemplate } from "@/utils/boletoExportImport";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,7 @@ const Boletos = () => {
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [niboDialogOpen, setNiboDialogOpen] = useState(false);
 
   const handleEdit = (boleto: BoletoWithClient) => {
     setEditingBoleto(boleto);
@@ -175,7 +177,7 @@ const Boletos = () => {
             </Select>
             <Button
               variant="outline"
-              onClick={importFromNibo}
+              onClick={() => setNiboDialogOpen(true)}
               disabled={importing}
               className="gap-2"
             >
@@ -244,6 +246,16 @@ const Boletos = () => {
           onDownloadTemplate={downloadBoletoTemplate}
           title="Importar Boletos"
           description="Baixe o modelo XLSX, preencha com os dados dos boletos e importe o arquivo."
+        />
+
+        <NiboImportDialog
+          open={niboDialogOpen}
+          onOpenChange={setNiboDialogOpen}
+          onImport={(connId) => {
+            importFromNibo(connId);
+            setNiboDialogOpen(false);
+          }}
+          importing={importing}
         />
       </div>
     </MainLayout>
