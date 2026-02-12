@@ -1,1 +1,4 @@
 project_id = "zldnuanexjfhdnpdxdyy"
+
+[functions.fetch-nibo-boletos]
+verify_jwt = false

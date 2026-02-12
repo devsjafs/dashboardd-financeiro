@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download } from "lucide-react";
+import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
+import { useNiboImport } from "@/hooks/useNiboImport";
 import { BoletoDialog } from "@/components/boletos/BoletoDialog";
 import { BoletosTable } from "@/components/boletos/BoletosTable";
 import { BoletoStatsCard } from "@/components/boletos/BoletoStatsCard";
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Boletos = () => {
   const { boletos, isLoading, createBoleto, updateBoleto, deleteBoleto, markAsPaid, markAsUnpaid } = useBoletos();
+  const { importFromNibo, importing } = useNiboImport();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
@@ -173,11 +175,20 @@ const Boletos = () => {
             </Select>
             <Button
               variant="outline"
+              onClick={importFromNibo}
+              disabled={importing}
+              className="gap-2"
+            >
+              <CloudDownload className="w-4 h-4" />
+              {importing ? "Importando..." : "Importar Nibo"}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setImportDialogOpen(true)}
               className="gap-2"
             >
               <Upload className="w-4 h-4" />
-              Importar
+              Importar XLSX
             </Button>
             <Button variant="outline" onClick={handleExport} className="gap-2">
               <Download className="w-4 h-4" />
