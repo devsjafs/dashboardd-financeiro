@@ -75,7 +75,7 @@ export const BoletosTable = ({
                         : onMarkAsPaid(boleto.id)
                     }
                   >
-                    {boleto.status}
+                    {boleto.status === "pago" ? "PAGO" : "NÃO PAGO"}
                   </Badge>
                 </TableCell>
                 <TableCell>

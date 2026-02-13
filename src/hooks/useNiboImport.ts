@@ -84,10 +84,37 @@ export const useNiboImport = () => {
           (c) => c.cnpj?.replace(/\D/g, "") === stakeholderDoc && stakeholderDoc !== ""
         );
 
-        if (!client) {
+        let matchedClient = client;
+
+        if (!matchedClient && stakeholderDoc !== "") {
+          // Auto-create client from Nibo stakeholder data
+          const { data: newClient, error: createError } = await supabase
+            .from("clients")
+            .insert({
+              cnpj: stakeholderDoc,
+              nome_fantasia: stakeholderName,
+              razao_social: stakeholderName,
+              codigo: stakeholderDoc.substring(0, 10),
+              inicio_competencia: dueDate ? dueDate.substring(0, 7) : new Date().toISOString().substring(0, 7),
+              situacao: "Ativa",
+              status: "Ativo",
+              vencimento: 10,
+              services: [],
+            })
+            .select("id")
+            .single();
+
+          if (newClient && !createError) {
+            matchedClient = { id: newClient.id, nome_fantasia: stakeholderName, cnpj: stakeholderDoc, razao_social: stakeholderName };
+            // Add to local clients array so subsequent items match
+            clients?.push(matchedClient);
+          }
+        }
+
+        if (!matchedClient) {
           const reason = stakeholderDoc === "" 
             ? "Sem CNPJ/CPF no Nibo" 
-            : `CNPJ ${stakeholderDoc} não encontrado nos clientes`;
+            : `Erro ao criar cliente para CNPJ ${stakeholderDoc}`;
           skipped++;
           logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason });
           setProgress({ current: i + 1, total, imported, skipped });
@@ -100,7 +127,7 @@ export const useNiboImport = () => {
         const { data: existing } = await supabase
           .from("boletos")
           .select("id")
-          .eq("client_id", client.id)
+          .eq("client_id", matchedClient.id)
           .eq("vencimento", dueDate)
           .eq("valor", value)
           .limit(1);
@@ -114,7 +141,7 @@ export const useNiboImport = () => {
         }
 
         await supabase.from("boletos").insert({
-          client_id: client.id,
+          client_id: matchedClient.id,
           valor: value,
           vencimento: dueDate,
           competencia,
