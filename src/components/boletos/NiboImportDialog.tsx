@@ -84,7 +84,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
 
   return (
     <Dialog open={open} onOpenChange={importing ? undefined : handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Importar do Nibo</DialogTitle>
           <DialogDescription>
@@ -111,7 +111,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
             </div>
 
             {importLog.length > 0 && (
-              <ScrollArea className="flex-1 min-h-0 max-h-[300px] border rounded-md">
+              <ScrollArea className="flex-1 min-h-0 h-[350px] border rounded-md">
                 <div className="p-2 space-y-1">
                   {importLog.map((entry, idx) => (
                     <div
