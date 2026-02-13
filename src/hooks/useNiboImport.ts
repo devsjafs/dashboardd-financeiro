@@ -3,6 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
+export interface ImportLogEntry {
+  stakeholderName: string;
+  stakeholderDoc: string;
+  value: number;
+  dueDate: string;
+  status: "imported" | "skipped";
+  reason?: string;
+}
+
 interface ImportProgress {
   current: number;
   total: number;
@@ -15,10 +24,12 @@ export const useNiboImport = () => {
   const queryClient = useQueryClient();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [importLog, setImportLog] = useState<ImportLogEntry[]>([]);
 
   const importFromNibo = async (connectionId?: string) => {
     setImporting(true);
     setProgress({ current: 0, total: 0, imported: 0, skipped: 0 });
+    setImportLog([]);
     try {
       const { data, error } = await supabase.functions.invoke("fetch-nibo-boletos", {
         body: { connection_id: connectionId || null },
@@ -51,31 +62,39 @@ export const useNiboImport = () => {
       let imported = 0;
       let skipped = 0;
       const total = items.length;
+      const logs: ImportLogEntry[] = [];
 
       setProgress({ current: 0, total, imported: 0, skipped: 0 });
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        // Match by CNPJ/CPF (document) instead of name
+        const stakeholderName = item.stakeholder?.name || item.stakeholderName || "Desconhecido";
         const stakeholderDoc = (
           item.stakeholder?.document || 
           item.stakeholder?.cpfCnpj || 
           item.stakeholder?.taxNumber || 
           item.stakeholderDocument || 
           ""
-        ).replace(/\D/g, ""); // Remove formatting
+        ).replace(/\D/g, "");
+
+        const dueDate = item.dueDate?.split("T")[0] || "";
+        const value = item.value || 0;
 
         const client = clients?.find(
           (c) => c.cnpj?.replace(/\D/g, "") === stakeholderDoc && stakeholderDoc !== ""
         );
 
         if (!client) {
+          const reason = stakeholderDoc === "" 
+            ? "Sem CNPJ/CPF no Nibo" 
+            : `CNPJ ${stakeholderDoc} não encontrado nos clientes`;
           skipped++;
+          logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason });
           setProgress({ current: i + 1, total, imported, skipped });
+          setImportLog([...logs]);
           continue;
         }
 
-        const dueDate = item.dueDate?.split("T")[0] || "";
         const competencia = dueDate ? dueDate.substring(0, 7) : "";
 
         const { data: existing } = await supabase
@@ -83,38 +102,46 @@ export const useNiboImport = () => {
           .select("id")
           .eq("client_id", client.id)
           .eq("vencimento", dueDate)
-          .eq("valor", item.value || 0)
+          .eq("valor", value)
           .limit(1);
 
         if (existing && existing.length > 0) {
           skipped++;
+          logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason: "Boleto duplicado (já existe)" });
           setProgress({ current: i + 1, total, imported, skipped });
+          setImportLog([...logs]);
           continue;
         }
 
         await supabase.from("boletos").insert({
           client_id: client.id,
-          valor: item.value || 0,
+          valor: value,
           vencimento: dueDate,
           competencia,
           categoria: item.categoryName || item.category?.name || "Nibo",
           status: "não pago",
         });
         imported++;
+        logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported" });
         setProgress({ current: i + 1, total, imported, skipped });
+        setImportLog([...logs]);
       }
 
       queryClient.invalidateQueries({ queryKey: ["boletos"] });
       toast({
         title: "Importação concluída",
-        description: `${imported} boletos importados, ${skipped} ignorados (sem cliente vinculado ou duplicado).`,
+        description: `${imported} boletos importados, ${skipped} ignorados.`,
       });
     } catch (err: any) {
       toast({ title: "Erro", description: err.message || "Erro ao importar boletos do Nibo.", variant: "destructive" });
     }
     setImporting(false);
+  };
+
+  const clearLog = () => {
+    setImportLog([]);
     setProgress(null);
   };
 
-  return { importFromNibo, importing, progress };
+  return { importFromNibo, importing, progress, importLog, clearLog };
 };
