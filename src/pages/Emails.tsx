@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Send, AlertCircle } from "lucide-react";
@@ -104,16 +104,14 @@ const Emails = () => {
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Carregando...</p>
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center h-full">
+        <p>Carregando...</p>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div className="space-y-6">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -217,7 +215,7 @@ const Emails = () => {
           </CardContent>
         </Card>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

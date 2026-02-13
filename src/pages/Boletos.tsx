@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MainLayout } from "@/components/layout/MainLayout";
+
 import { Button } from "@/components/ui/button";
 import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
@@ -145,16 +145,14 @@ const Boletos = () => {
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Carregando...</p>
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center h-full">
+        <p>Carregando...</p>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div className="space-y-6">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -260,7 +258,7 @@ const Boletos = () => {
           onClearLog={clearLog}
         />
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
