@@ -94,7 +94,7 @@ export const useNiboImport = () => {
               cnpj: stakeholderDoc,
               nome_fantasia: stakeholderName,
               razao_social: stakeholderName,
-              codigo: stakeholderDoc.substring(0, 10),
+              codigo: `NIBO-${stakeholderDoc}`,
               inicio_competencia: dueDate ? dueDate.substring(0, 7) : new Date().toISOString().substring(0, 7),
               situacao: "Ativa",
               status: "Ativo",
@@ -106,15 +106,17 @@ export const useNiboImport = () => {
 
           if (newClient && !createError) {
             matchedClient = { id: newClient.id, nome_fantasia: stakeholderName, cnpj: stakeholderDoc, razao_social: stakeholderName };
-            // Add to local clients array so subsequent items match
             clients?.push(matchedClient);
+            logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported", reason: "Cliente criado automaticamente" });
+          } else {
+            console.error("Error creating client:", createError);
           }
         }
 
         if (!matchedClient) {
           const reason = stakeholderDoc === "" 
             ? "Sem CNPJ/CPF no Nibo" 
-            : `Erro ao criar cliente para CNPJ ${stakeholderDoc}`;
+            : `Não foi possível criar cliente (CNPJ: ${stakeholderDoc})`;
           skipped++;
           logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason });
           setProgress({ current: i + 1, total, imported, skipped });
