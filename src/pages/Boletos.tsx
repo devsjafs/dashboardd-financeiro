@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Boletos = () => {
   const { boletos, isLoading, createBoleto, updateBoleto, deleteBoleto, markAsPaid, markAsUnpaid } = useBoletos();
-  const { importFromNibo, importing, progress } = useNiboImport();
+  const { importFromNibo, importing, progress, importLog, clearLog } = useNiboImport();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
@@ -256,6 +256,8 @@ const Boletos = () => {
           }}
           importing={importing}
           progress={progress}
+          importLog={importLog}
+          onClearLog={clearLog}
         />
       </div>
     </MainLayout>

@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { ImportLogEntry } from "@/hooks/useNiboImport";
 
 interface ImportProgress {
   current: number;
@@ -26,6 +29,8 @@ interface NiboImportDialogProps {
   onImport: (connectionId?: string) => void;
   importing: boolean;
   progress: ImportProgress | null;
+  importLog: ImportLogEntry[];
+  onClearLog: () => void;
 }
 
 interface NiboConnection {
@@ -33,7 +38,17 @@ interface NiboConnection {
   nome: string;
 }
 
-export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, progress }: NiboImportDialogProps) => {
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+const formatDoc = (doc: string) => {
+  if (!doc) return "—";
+  if (doc.length === 14) return doc.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  if (doc.length === 11) return doc.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  return doc;
+};
+
+export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, progress, importLog, onClearLog }: NiboImportDialogProps) => {
   const [connections, setConnections] = useState<NiboConnection[]>([]);
   const [selected, setSelected] = useState<string>("all");
   const [loading, setLoading] = useState(true);
@@ -56,33 +71,83 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
     onImport(selected === "all" ? undefined : selected);
   };
 
+  const handleClose = () => {
+    onClearLog();
+    onOpenChange(false);
+  };
+
   const percentage = progress && progress.total > 0
     ? Math.round((progress.current / progress.total) * 100)
     : 0;
 
+  const isFinished = !importing && importLog.length > 0;
+
   return (
-    <Dialog open={open} onOpenChange={importing ? undefined : onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={importing ? undefined : handleClose}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Importar do Nibo</DialogTitle>
           <DialogDescription>
-            Selecione a conexão e importe os boletos vencidos automaticamente.
+            {isFinished
+              ? "Importação concluída. Veja o resultado abaixo."
+              : "Selecione a conexão e importe os boletos vencidos automaticamente."}
           </DialogDescription>
         </DialogHeader>
 
-        {importing && progress ? (
-          <div className="space-y-4 py-4">
+        {(importing || isFinished) && progress ? (
+          <div className="space-y-4 flex-1 min-h-0 flex flex-col">
             <div className="text-center">
               <p className="text-4xl font-bold text-primary">{percentage}%</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Processando {progress.current} de {progress.total} boletos
+                {importing
+                  ? `Processando ${progress.current} de ${progress.total} boletos`
+                  : `${progress.total} boletos processados`}
               </p>
             </div>
             <Progress value={percentage} className="h-3" />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span className="text-green-600">{progress.imported} importados</span>
-              <span className="text-orange-500">{progress.skipped} ignorados</span>
+              <span className="text-green-600 font-medium">{progress.imported} importados</span>
+              <span className="text-orange-500 font-medium">{progress.skipped} ignorados</span>
             </div>
+
+            {importLog.length > 0 && (
+              <ScrollArea className="flex-1 min-h-0 max-h-[300px] border rounded-md">
+                <div className="p-2 space-y-1">
+                  {importLog.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-2 p-2 rounded text-xs ${
+                        entry.status === "imported"
+                          ? "bg-green-50 dark:bg-green-950/30"
+                          : "bg-orange-50 dark:bg-orange-950/30"
+                      }`}
+                    >
+                      <Badge
+                        variant={entry.status === "imported" ? "default" : "secondary"}
+                        className={`shrink-0 text-[10px] ${
+                          entry.status === "imported"
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-orange-500 hover:bg-orange-600 text-white"
+                        }`}
+                      >
+                        {entry.status === "imported" ? "OK" : "SKIP"}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{entry.stakeholderName}</p>
+                        <p className="text-muted-foreground">
+                          Doc: {formatDoc(entry.stakeholderDoc)} · {formatCurrency(entry.value)} · Venc: {entry.dueDate}
+                        </p>
+                        {entry.reason && (
+                          <p className="text-orange-600 dark:text-orange-400 mt-0.5">
+                            Motivo: {entry.reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
           </div>
         ) : loading ? (
           <p className="text-muted-foreground py-4">Carregando conexões...</p>
@@ -110,10 +175,14 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
 
         {!importing && (
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button onClick={handleImport} disabled={connections.length === 0}>
-              Importar
+            <Button variant="outline" onClick={handleClose}>
+              {isFinished ? "Fechar" : "Cancelar"}
             </Button>
+            {!isFinished && (
+              <Button onClick={handleImport} disabled={connections.length === 0}>
+                Importar
+              </Button>
+            )}
           </DialogFooter>
         )}
       </DialogContent>
