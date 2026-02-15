@@ -96,7 +96,7 @@ export const useNiboImport = () => {
               razao_social: stakeholderName,
               codigo: `NIBO-${stakeholderDoc}`,
               inicio_competencia: dueDate ? dueDate.substring(0, 7) : new Date().toISOString().substring(0, 7),
-              situacao: "Ativa",
+              situacao: "mes-corrente",
               status: "Ativo",
               vencimento: 10,
               services: [],
