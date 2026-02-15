@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { ImportLogEntry } from "@/hooks/useNiboImport";
@@ -84,7 +83,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
 
   return (
     <Dialog open={open} onOpenChange={importing ? undefined : handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl" style={{ maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <DialogHeader>
           <DialogTitle>Importar do Nibo</DialogTitle>
           <DialogDescription>
@@ -95,7 +94,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
         </DialogHeader>
 
         {(importing || isFinished) && progress ? (
-          <div className="space-y-4 flex-1 min-h-0 flex flex-col">
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, gap: "1rem" }}>
             <div className="text-center">
               <p className="text-4xl font-bold text-primary">{percentage}%</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -111,7 +110,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
             </div>
 
             {importLog.length > 0 && (
-              <div className="flex-1 min-h-0 h-[350px] border rounded-md overflow-y-auto">
+              <div style={{ flex: 1, minHeight: 0, maxHeight: "400px", overflowY: "auto", border: "1px solid hsl(var(--border))", borderRadius: "0.375rem" }}>
                 <div className="p-2 space-y-1">
                   {importLog.map((entry, idx) => (
                     <div

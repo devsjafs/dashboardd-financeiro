@@ -88,28 +88,43 @@ export const useNiboImport = () => {
 
         if (!matchedClient && stakeholderDoc !== "") {
           // Auto-create client from Nibo stakeholder data
-          const { data: newClient, error: createError } = await supabase
+          const codigo = `NIBO-${stakeholderDoc}`;
+          
+          // Check if client with this codigo already exists (unique constraint)
+          const existingByCode = clients?.find(c => false); // won't match locally
+          const { data: existingClient } = await supabase
             .from("clients")
-            .insert({
-              cnpj: stakeholderDoc,
-              nome_fantasia: stakeholderName,
-              razao_social: stakeholderName,
-              codigo: `NIBO-${stakeholderDoc}`,
-              inicio_competencia: dueDate ? dueDate.substring(0, 7) : new Date().toISOString().substring(0, 7),
-              situacao: "mes-corrente",
-              status: "Ativo",
-              vencimento: 10,
-              services: [],
-            })
-            .select("id")
-            .single();
+            .select("id, nome_fantasia, cnpj, razao_social")
+            .eq("codigo", codigo)
+            .limit(1);
 
-          if (newClient && !createError) {
-            matchedClient = { id: newClient.id, nome_fantasia: stakeholderName, cnpj: stakeholderDoc, razao_social: stakeholderName };
+          if (existingClient && existingClient.length > 0) {
+            matchedClient = existingClient[0];
             clients?.push(matchedClient);
-            logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported", reason: "Cliente criado automaticamente" });
           } else {
-            console.error("Error creating client:", createError);
+            const { data: newClient, error: createError } = await supabase
+              .from("clients")
+              .insert({
+                cnpj: stakeholderDoc,
+                nome_fantasia: stakeholderName,
+                razao_social: stakeholderName,
+                codigo,
+                inicio_competencia: dueDate ? dueDate.substring(0, 7) : new Date().toISOString().substring(0, 7),
+                situacao: "mes-corrente",
+                status: "ativo",
+                vencimento: 10,
+                services: [],
+              })
+              .select("id")
+              .single();
+
+            if (newClient && !createError) {
+              matchedClient = { id: newClient.id, nome_fantasia: stakeholderName, cnpj: stakeholderDoc, razao_social: stakeholderName };
+              clients?.push(matchedClient);
+              logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported", reason: "Cliente criado automaticamente" });
+            } else {
+              console.error("Error creating client:", createError);
+            }
           }
         }
 
