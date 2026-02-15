@@ -29,6 +29,8 @@ export interface Client {
   status: ClientStatus;
   grupo?: string;
   email?: string;
+  ultimoReajuste?: string; // formato: YYYY-MM-DD
+  periodoReajusteMeses: number; // default 12
   createdAt: string;
   updatedAt: string;
 }

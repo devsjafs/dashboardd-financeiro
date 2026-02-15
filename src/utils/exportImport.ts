@@ -63,6 +63,8 @@ export const importFromXLSX = (file: File): Promise<Omit<Client, "id" | "created
           status: String(row["Status"]) as Client["status"],
           grupo: row["Grupo"] ? String(row["Grupo"]) : undefined,
           email: row["Email"] ? String(row["Email"]) : undefined,
+          periodoReajusteMeses: row["Período Reajuste (meses)"] ? Number(row["Período Reajuste (meses)"]) : 12,
+          ultimoReajuste: row["Último Reajuste"] ? String(row["Último Reajuste"]) : undefined,
         }));
 
         resolve(clients);

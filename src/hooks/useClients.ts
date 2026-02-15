@@ -36,6 +36,8 @@ export const useClients = () => {
         situacao: client.situacao,
         status: client.status,
         grupo: client.grupo,
+        ultimoReajuste: client.ultimo_reajuste,
+        periodoReajusteMeses: client.periodo_reajuste_meses ?? 12,
         createdAt: client.created_at,
         updatedAt: client.updated_at,
       })) as Client[];
@@ -63,6 +65,8 @@ export const useClients = () => {
           situacao: client.situacao,
           status: client.status,
           grupo: client.grupo,
+          ultimo_reajuste: (client as any).ultimoReajuste || null,
+          periodo_reajuste_meses: (client as any).periodoReajusteMeses ?? 12,
         })
         .select()
         .single();
@@ -107,6 +111,8 @@ export const useClients = () => {
           situacao: client.situacao,
           status: client.status,
           grupo: client.grupo,
+          ultimo_reajuste: client.ultimoReajuste || null,
+          periodo_reajuste_meses: client.periodoReajusteMeses ?? 12,
         })
         .eq("id", client.id)
         .select()
