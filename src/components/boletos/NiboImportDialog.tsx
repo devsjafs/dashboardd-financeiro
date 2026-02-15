@@ -111,7 +111,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
             </div>
 
             {importLog.length > 0 && (
-              <ScrollArea className="flex-1 min-h-0 h-[350px] border rounded-md">
+              <div className="flex-1 min-h-0 h-[350px] border rounded-md overflow-y-auto">
                 <div className="p-2 space-y-1">
                   {importLog.map((entry, idx) => (
                     <div
@@ -146,7 +146,7 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             )}
           </div>
         ) : loading ? (
