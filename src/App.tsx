@@ -9,6 +9,7 @@ import Payments from "./pages/Payments";
 import Commissions from "./pages/Commissions";
 import Boletos from "./pages/Boletos";
 import Emails from "./pages/Emails";
+import Reajustes from "./pages/Reajustes";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/pagamentos" element={<Payments />} />
             <Route path="/comissoes" element={<Commissions />} />
             <Route path="/boletos" element={<Boletos />} />
+            <Route path="/reajustes" element={<Reajustes />} />
             <Route path="/emails" element={<Emails />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt, DollarSign, FileText, Mail, Settings } from "lucide-react";
+import { LayoutDashboard, Receipt, DollarSign, FileText, Mail, Settings, RefreshCw } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -17,6 +17,7 @@ const items = [
   { title: "Pagamentos", url: "/pagamentos", icon: Receipt },
   { title: "Boletos", url: "/boletos", icon: FileText },
   { title: "Comissões", url: "/comissoes", icon: DollarSign },
+  { title: "Reajustes", url: "/reajustes", icon: RefreshCw },
   { title: "Emails", url: "/emails", icon: Mail },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];

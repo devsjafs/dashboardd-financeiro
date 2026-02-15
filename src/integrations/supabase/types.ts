@@ -139,11 +139,13 @@ export type Database = {
           id: string
           inicio_competencia: string
           nome_fantasia: string
+          periodo_reajuste_meses: number | null
           razao_social: string
           services: string[]
           situacao: string
           status: string
           ultima_competencia: string | null
+          ultimo_reajuste: string | null
           updated_at: string
           valor_apoio: number | null
           valor_contabilidade: number | null
@@ -161,11 +163,13 @@ export type Database = {
           id?: string
           inicio_competencia: string
           nome_fantasia: string
+          periodo_reajuste_meses?: number | null
           razao_social: string
           services?: string[]
           situacao: string
           status: string
           ultima_competencia?: string | null
+          ultimo_reajuste?: string | null
           updated_at?: string
           valor_apoio?: number | null
           valor_contabilidade?: number | null
@@ -183,11 +187,13 @@ export type Database = {
           id?: string
           inicio_competencia?: string
           nome_fantasia?: string
+          periodo_reajuste_meses?: number | null
           razao_social?: string
           services?: string[]
           situacao?: string
           status?: string
           ultima_competencia?: string | null
+          ultimo_reajuste?: string | null
           updated_at?: string
           valor_apoio?: number | null
           valor_contabilidade?: number | null

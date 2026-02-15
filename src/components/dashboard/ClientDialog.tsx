@@ -47,6 +47,8 @@ const formSchema = z.object({
   situacao: z.enum(["mes-vencido", "mes-corrente", "anual", "mes-corrente-vencido"]),
   status: z.enum(["ativo", "inativo", "sem-faturamento", "ex-cliente", "suspenso"]),
   grupo: z.string().optional().or(z.literal("")),
+  ultimoReajuste: z.string().optional().or(z.literal("")),
+  periodoReajusteMeses: z.coerce.number().min(1).default(12),
 });
 
 interface ClientDialogProps {
@@ -77,6 +79,8 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       situacao: "mes-corrente",
       status: "ativo",
       grupo: "",
+      ultimoReajuste: "",
+      periodoReajusteMeses: 12,
     },
   });
 
@@ -100,6 +104,8 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         situacao: client.situacao,
         status: client.status,
         grupo: client.grupo || "",
+        ultimoReajuste: client.ultimoReajuste || "",
+        periodoReajusteMeses: client.periodoReajusteMeses ?? 12,
       });
     } else {
       form.reset({
@@ -120,6 +126,8 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
         situacao: "mes-corrente",
         status: "ativo",
         grupo: "",
+        ultimoReajuste: "",
+        periodoReajusteMeses: 12,
       });
     }
   }, [client, form]);
@@ -145,6 +153,8 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
       situacao: values.situacao as ClientSituacao,
       status: values.status as ClientStatus,
       grupo: values.grupo || undefined,
+      ultimoReajuste: values.ultimoReajuste || undefined,
+      periodoReajusteMeses: values.periodoReajusteMeses,
     } as any);
     form.reset();
   };
@@ -449,6 +459,34 @@ export function ClientDialog({ open, onOpenChange, client, onSave }: ClientDialo
                     <FormLabel>Grupo</FormLabel>
                     <FormControl>
                       <Input {...field} placeholder="Ex: Matriz, Filial A" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="ultimoReajuste"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Último Reajuste</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="periodoReajusteMeses"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Período Reajuste (meses)</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={1} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
