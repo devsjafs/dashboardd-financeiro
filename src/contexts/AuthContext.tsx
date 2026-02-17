@@ -54,6 +54,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchOrganization = async (userId: string) => {
+    // Try to auto-accept pending invite first
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.email) {
+      try {
+        await supabase.rpc("accept_pending_invite", {
+          _user_id: userId,
+          _email: userData.user.email,
+        });
+      } catch {} // Ignore errors silently
+    }
+
     const { data } = await supabase
       .from("organization_members")
       .select("organization_id, role")
