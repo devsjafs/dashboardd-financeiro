@@ -12,19 +12,33 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Pagamentos", url: "/pagamentos", icon: Receipt },
-  { title: "Boletos", url: "/boletos", icon: FileText },
-  { title: "Comissões", url: "/comissoes", icon: DollarSign },
-  { title: "Reajustes", url: "/reajustes", icon: RefreshCw },
-  { title: "Emails", url: "/emails", icon: Mail },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: any;
+  minRole: AppRole; // minimum role required
+}
+
+const roleLevel: Record<AppRole, number> = {
+  viewer: 0,
+  member: 1,
+  admin: 2,
+  owner: 3,
+};
+
+const items: MenuItem[] = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, minRole: "viewer" },
+  { title: "Pagamentos", url: "/pagamentos", icon: Receipt, minRole: "member" },
+  { title: "Boletos", url: "/boletos", icon: FileText, minRole: "member" },
+  { title: "Comissões", url: "/comissoes", icon: DollarSign, minRole: "admin" },
+  { title: "Reajustes", url: "/reajustes", icon: RefreshCw, minRole: "admin" },
+  { title: "Emails", url: "/emails", icon: Mail, minRole: "member" },
+  { title: "Configurações", url: "/configuracoes", icon: Settings, minRole: "admin" },
 ];
 
 function getInitial(profile: { display_name: string | null } | null, email?: string): string {
@@ -36,11 +50,13 @@ function getInitial(profile: { display_name: string | null } | null, email?: str
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { signOut, user, profile } = useAuth();
+  const { signOut, user, profile, userRole } = useAuth();
   const navigate = useNavigate();
 
   const initial = getInitial(profile, user?.email ?? undefined);
-  const displayName = profile?.display_name || user?.email || "";
+  const currentLevel = roleLevel[userRole || "viewer"];
+
+  const visibleItems = items.filter(item => currentLevel >= roleLevel[item.minRole]);
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-60"}>
@@ -49,7 +65,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -81,7 +97,7 @@ export function AppSidebar() {
             >
               <Avatar className="h-8 w-8 shrink-0">
                 {profile?.avatar_url && (
-                  <AvatarImage src={profile.avatar_url} alt={displayName} />
+                  <AvatarImage src={profile.avatar_url} alt={profile?.display_name || ""} />
                 )}
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initial}

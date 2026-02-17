@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Client } from "@/types/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useClients = () => {
   const queryClient = useQueryClient();
+  const { organizationId } = useAuth();
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["clients"],
+    queryKey: ["clients", organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clients")
@@ -36,12 +38,14 @@ export const useClients = () => {
         situacao: client.situacao,
         status: client.status,
         grupo: client.grupo,
+        email: client.email,
         ultimoReajuste: client.ultimo_reajuste,
         periodoReajusteMeses: client.periodo_reajuste_meses ?? 12,
         createdAt: client.created_at,
         updatedAt: client.updated_at,
       })) as Client[];
     },
+    enabled: !!organizationId,
   });
 
   const createClient = useMutation({
@@ -67,6 +71,7 @@ export const useClients = () => {
           grupo: client.grupo,
           ultimo_reajuste: (client as any).ultimoReajuste || null,
           periodo_reajuste_meses: (client as any).periodoReajusteMeses ?? 12,
+          organization_id: organizationId,
         })
         .select()
         .single();
@@ -76,17 +81,10 @@ export const useClients = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
-      toast({
-        title: "Cliente criado",
-        description: "Cliente adicionado com sucesso.",
-      });
+      toast({ title: "Cliente criado", description: "Cliente adicionado com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao criar cliente",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao criar cliente", description: error.message, variant: "destructive" });
     },
   });
 
@@ -123,17 +121,10 @@ export const useClients = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
-      toast({
-        title: "Cliente atualizado",
-        description: "Cliente atualizado com sucesso.",
-      });
+      toast({ title: "Cliente atualizado", description: "Cliente atualizado com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao atualizar cliente",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao atualizar cliente", description: error.message, variant: "destructive" });
     },
   });
 
@@ -144,25 +135,12 @@ export const useClients = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
-      toast({
-        title: "Cliente excluído",
-        description: "Cliente removido com sucesso.",
-      });
+      toast({ title: "Cliente excluído", description: "Cliente removido com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao excluir cliente",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao excluir cliente", description: error.message, variant: "destructive" });
     },
   });
 
-  return {
-    clients,
-    isLoading,
-    createClient,
-    updateClient,
-    deleteClient,
-  };
+  return { clients, isLoading, createClient, updateClient, deleteClient };
 };

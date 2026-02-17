@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface ClientNote {
   id: string;
@@ -12,6 +13,7 @@ export interface ClientNote {
 
 export const useClientNotes = (clientId: string) => {
   const queryClient = useQueryClient();
+  const { organizationId } = useAuth();
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ["client-notes", clientId],
@@ -39,10 +41,7 @@ export const useClientNotes = (clientId: string) => {
     mutationFn: async (note: string) => {
       const { data, error } = await supabase
         .from("client_notes")
-        .insert({
-          client_id: clientId,
-          note,
-        })
+        .insert({ client_id: clientId, note, organization_id: organizationId })
         .select()
         .single();
 
@@ -51,17 +50,10 @@ export const useClientNotes = (clientId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-notes", clientId] });
-      toast({
-        title: "Anotação adicionada",
-        description: "Anotação criada com sucesso.",
-      });
+      toast({ title: "Anotação adicionada", description: "Anotação criada com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao adicionar anotação",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao adicionar anotação", description: error.message, variant: "destructive" });
     },
   });
 
@@ -79,17 +71,10 @@ export const useClientNotes = (clientId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-notes", clientId] });
-      toast({
-        title: "Anotação atualizada",
-        description: "Anotação editada com sucesso.",
-      });
+      toast({ title: "Anotação atualizada", description: "Anotação editada com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao atualizar anotação",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao atualizar anotação", description: error.message, variant: "destructive" });
     },
   });
 
@@ -100,25 +85,12 @@ export const useClientNotes = (clientId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["client-notes", clientId] });
-      toast({
-        title: "Anotação excluída",
-        description: "Anotação removida com sucesso.",
-      });
+      toast({ title: "Anotação excluída", description: "Anotação removida com sucesso." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao excluir anotação",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao excluir anotação", description: error.message, variant: "destructive" });
     },
   });
 
-  return {
-    notes,
-    isLoading,
-    addNote,
-    updateNote,
-    deleteNote,
-  };
+  return { notes, isLoading, addNote, updateNote, deleteNote };
 };

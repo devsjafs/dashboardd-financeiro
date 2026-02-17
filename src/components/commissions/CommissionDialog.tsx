@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { useCommissions } from "@/hooks/useCommissions";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const formSchema = z.object({
   client_id: z.string().min(1, "Cliente é obrigatório"),
@@ -49,6 +50,7 @@ interface CommissionDialogProps {
 export function CommissionDialog({ open, onOpenChange, commissionId }: CommissionDialogProps) {
   const { createCommission, updateCommission, commissions } = useCommissions();
   const { clients } = useClients();
+  const { organizationId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -124,6 +126,7 @@ export function CommissionDialog({ open, onOpenChange, commissionId }: Commissio
         preco: valorComissao,
         pago: false,
         data_pagamento: null,
+        organization_id: organizationId,
       });
     }
 
