@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Save, Eye, EyeOff, Plus, Trash2, Pencil, CheckCircle2, XCircle,
   Globe, Loader2, Upload, User, Palette, Plug, Sun, Moon, Building2, Users, Shield,
+  Mail, Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +43,12 @@ const Settings = () => {
   const { toast } = useToast();
   const { user, profile, refreshProfile, organizationId, userRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { organization, members, updateMemberRole, removeMember } = useOrganization();
+  const { organization, members, invites, inviteMember, cancelInvite, updateMemberRole, removeMember } = useOrganization();
+
+  // Invite state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member" | "viewer">("member");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   // Profile state
   const [displayName, setDisplayName] = useState("");
@@ -400,6 +406,9 @@ const Settings = () => {
                     <h3 className="text-sm font-medium flex items-center gap-2">
                       <Users className="h-4 w-4" /> Membros ({members.length})
                     </h3>
+                    <Button size="sm" className="gap-2" onClick={() => setInviteDialogOpen(true)}>
+                      <Plus className="h-4 w-4" /> Convidar
+                    </Button>
                   </div>
                   <Table>
                     <TableHeader>
@@ -476,6 +485,37 @@ const Settings = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  {/* Pending Invites */}
+                  {invites.length > 0 && (
+                    <div className="space-y-3 mt-6">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Clock className="h-4 w-4" /> Convites pendentes ({invites.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {invites.map((invite) => (
+                          <div key={invite.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                            <div className="flex items-center gap-3">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">{invite.email}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {invite.role === "admin" ? "Admin" : invite.role === "member" ? "Membro" : "Visualizador"}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => cancelInvite.mutate(invite.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -666,7 +706,60 @@ const Settings = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Nibo Dialog */}
+      {/* Invite Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Convidar Membro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Papel</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="member">Membro</SelectItem>
+                  <SelectItem value="viewer">Visualizador</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {inviteRole === "admin" && "Acesso total, exceto gerenciamento de membros."}
+                {inviteRole === "member" && "Acesso a Dashboard, Pagamentos, Boletos e Emails."}
+                {inviteRole === "viewer" && "Apenas visualização do Dashboard."}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={inviteMember.isPending || !inviteEmail.trim()}
+              onClick={async () => {
+                await inviteMember.mutateAsync({ email: inviteEmail, role: inviteRole });
+                setInviteEmail("");
+                setInviteDialogOpen(false);
+              }}
+              className="gap-2"
+            >
+              {inviteMember.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              Enviar Convite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>

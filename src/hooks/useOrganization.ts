@@ -21,6 +21,16 @@ export interface OrganizationMember {
   };
 }
 
+export interface OrganizationInvite {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: "owner" | "admin" | "member" | "viewer";
+  invited_by: string;
+  created_at: string;
+  accepted_at: string | null;
+}
+
 export const useOrganization = () => {
   const { user, organizationId } = useAuth();
   const queryClient = useQueryClient();
@@ -51,7 +61,6 @@ export const useOrganization = () => {
         .order("created_at");
       if (error) throw error;
       
-      // Fetch profiles for each member
       const userIds = data.map((m: any) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -68,11 +77,26 @@ export const useOrganization = () => {
     enabled: !!organizationId,
   });
 
+  const { data: invites = [] } = useQuery({
+    queryKey: ["organization-invites", organizationId],
+    queryFn: async () => {
+      if (!organizationId) return [];
+      const { data, error } = await supabase
+        .from("organization_invites")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .is("accepted_at", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as OrganizationInvite[];
+    },
+    enabled: !!organizationId,
+  });
+
   const createOrganization = useMutation({
     mutationFn: async (name: string) => {
       if (!user) throw new Error("Não autenticado");
       
-      // Create org
       const { data: org, error: orgError } = await supabase
         .from("organizations")
         .insert({ name })
@@ -80,7 +104,6 @@ export const useOrganization = () => {
         .single();
       if (orgError) throw orgError;
 
-      // Add user as owner
       const { error: memberError } = await supabase
         .from("organization_members")
         .insert({
@@ -95,6 +118,49 @@ export const useOrganization = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-organization"] });
       toast({ title: "Organização criada", description: "Sua organização foi criada com sucesso." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const inviteMember = useMutation({
+    mutationFn: async ({ email, role }: { email: string; role: "admin" | "member" | "viewer" }) => {
+      if (!user || !organizationId) throw new Error("Não autenticado");
+      
+      const { error } = await supabase
+        .from("organization_invites")
+        .insert({
+          organization_id: organizationId,
+          email: email.toLowerCase().trim(),
+          role,
+          invited_by: user.id,
+        });
+      if (error) {
+        if (error.code === "23505") throw new Error("Este email já foi convidado.");
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-invites"] });
+      toast({ title: "Convite enviado", description: "O usuário poderá acessar ao fazer login." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cancelInvite = useMutation({
+    mutationFn: async (inviteId: string) => {
+      const { error } = await supabase
+        .from("organization_invites")
+        .delete()
+        .eq("id", inviteId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-invites"] });
+      toast({ title: "Convite cancelado" });
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -138,7 +204,10 @@ export const useOrganization = () => {
   return {
     organization,
     members,
+    invites,
     createOrganization,
+    inviteMember,
+    cancelInvite,
     updateMemberRole,
     removeMember,
   };
