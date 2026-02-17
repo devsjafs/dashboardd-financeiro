@@ -14,12 +14,13 @@ import Emails from "./pages/Emails";
 import Reajustes from "./pages/Reajustes";
 import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { session, loading } = useAuth();
+  const { session, loading, organizationId } = useAuth();
 
   if (loading) {
     return (
@@ -31,6 +32,10 @@ function ProtectedRoutes() {
 
   if (!session) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (!organizationId) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return (
@@ -49,6 +54,14 @@ function ProtectedRoutes() {
   );
 }
 
+function OnboardingRoute() {
+  const { session, loading, organizationId } = useAuth();
+  if (loading) return null;
+  if (!session) return <Navigate to="/auth" replace />;
+  if (organizationId) return <Navigate to="/" replace />;
+  return <Onboarding />;
+}
+
 const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
@@ -59,6 +72,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
+              <Route path="/onboarding" element={<OnboardingRoute />} />
               <Route path="/*" element={<ProtectedRoutes />} />
             </Routes>
           </AuthProvider>

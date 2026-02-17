@@ -2,13 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Payment, PaymentFormData } from "@/types/payment";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const usePayments = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { organizationId } = useAuth();
 
   const { data: payments = [], isLoading } = useQuery({
-    queryKey: ["payments"],
+    queryKey: ["payments", organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
@@ -18,16 +20,17 @@ export const usePayments = () => {
       if (error) throw error;
       return data as Payment[];
     },
+    enabled: !!organizationId,
   });
 
   const createPayment = useMutation({
     mutationFn: async (payment: PaymentFormData) => {
-      // Fix timezone by ensuring date is stored correctly
       const fixedPayment = {
         ...payment,
         vencimento: payment.vencimento.includes('T') 
           ? payment.vencimento.split('T')[0] 
-          : payment.vencimento
+          : payment.vencimento,
+        organization_id: organizationId,
       };
       
       const { data, error } = await supabase
@@ -41,17 +44,10 @@ export const usePayments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({
-        title: "Pagamento criado",
-        description: "O pagamento foi criado com sucesso.",
-      });
+      toast({ title: "Pagamento criado", description: "O pagamento foi criado com sucesso." });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar o pagamento.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível criar o pagamento.", variant: "destructive" });
     },
   });
 
@@ -69,17 +65,10 @@ export const usePayments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({
-        title: "Pagamento atualizado",
-        description: "O pagamento foi atualizado com sucesso.",
-      });
+      toast({ title: "Pagamento atualizado", description: "O pagamento foi atualizado com sucesso." });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o pagamento.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível atualizar o pagamento.", variant: "destructive" });
     },
   });
 
@@ -90,36 +79,21 @@ export const usePayments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({
-        title: "Pagamento excluído",
-        description: "O pagamento foi excluído com sucesso.",
-      });
+      toast({ title: "Pagamento excluído", description: "O pagamento foi excluído com sucesso." });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o pagamento.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível excluir o pagamento.", variant: "destructive" });
     },
   });
 
   const markAsPaid = useMutation({
     mutationFn: async ({ id, banco }: { id: string; banco?: string }) => {
-      // Get current date in local timezone
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const localDateString = `${year}-${month}-${day}`;
+      const localDateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
       const { data, error } = await supabase
         .from("payments")
-        .update({
-          status: "pago",
-          data_pagamento: localDateString,
-          banco: banco || null,
-        })
+        .update({ status: "pago", data_pagamento: localDateString, banco: banco || null })
         .eq("id", id)
         .select()
         .single();
@@ -129,17 +103,10 @@ export const usePayments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({
-        title: "Pagamento confirmado",
-        description: "O pagamento foi marcado como pago.",
-      });
+      toast({ title: "Pagamento confirmado", description: "O pagamento foi marcado como pago." });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o pagamento.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível atualizar o pagamento.", variant: "destructive" });
     },
   });
 
@@ -147,10 +114,7 @@ export const usePayments = () => {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from("payments")
-        .update({
-          status: "não pago",
-          data_pagamento: null,
-        })
+        .update({ status: "não pago", data_pagamento: null })
         .eq("id", id)
         .select()
         .single();
@@ -160,27 +124,12 @@ export const usePayments = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
-      toast({
-        title: "Pagamento revertido",
-        description: "O pagamento foi marcado como não pago.",
-      });
+      toast({ title: "Pagamento revertido", description: "O pagamento foi marcado como não pago." });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o pagamento.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Não foi possível atualizar o pagamento.", variant: "destructive" });
     },
   });
 
-  return {
-    payments,
-    isLoading,
-    createPayment,
-    updatePayment,
-    deletePayment,
-    markAsPaid,
-    markAsUnpaid,
-  };
+  return { payments, isLoading, createPayment, updatePayment, deletePayment, markAsPaid, markAsUnpaid };
 };

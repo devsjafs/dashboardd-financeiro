@@ -9,12 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   Save, Eye, EyeOff, Plus, Trash2, Pencil, CheckCircle2, XCircle,
-  Globe, Loader2, Upload, User, Palette, Plug, Sun, Moon,
+  Globe, Loader2, Upload, User, Palette, Plug, Sun, Moon, Building2, Users, Shield,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useOrganization } from "@/hooks/useOrganization";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -38,8 +40,9 @@ interface ThomsonReutersConfig {
 
 const Settings = () => {
   const { toast } = useToast();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, organizationId, userRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { organization, members, updateMemberRole, removeMember } = useOrganization();
 
   // Profile state
   const [displayName, setDisplayName] = useState("");
@@ -163,7 +166,7 @@ const Settings = () => {
       if (editingId) {
         await supabase.from("nibo_connections").update({ nome, api_token: apiToken, api_key: apiKey }).eq("id", editingId);
       } else {
-        await supabase.from("nibo_connections").insert({ nome, api_token: apiToken, api_key: apiKey });
+        await supabase.from("nibo_connections").insert({ nome, api_token: apiToken, api_key: apiKey, organization_id: organizationId });
       }
       toast({ title: "Sucesso", description: editingId ? "Conexão atualizada." : "Conexão adicionada." });
       setDialogOpen(false);
@@ -214,7 +217,7 @@ const Settings = () => {
     if (existing) {
       await supabase.from("settings").update({ value }).eq("key", key);
     } else {
-      await supabase.from("settings").insert({ key, value });
+      await supabase.from("settings").insert({ key, value, organization_id: organizationId });
     }
   };
 
@@ -277,6 +280,11 @@ const Settings = () => {
           <TabsTrigger value="aparencia" className="gap-2">
             <Palette className="h-4 w-4" /> Aparência
           </TabsTrigger>
+          {(userRole === "owner" || userRole === "admin") && (
+            <TabsTrigger value="organizacao" className="gap-2">
+              <Building2 className="h-4 w-4" /> Organização
+            </TabsTrigger>
+          )}
           <TabsTrigger value="integracoes" className="gap-2">
             <Plug className="h-4 w-4" /> Integrações
           </TabsTrigger>
@@ -374,6 +382,105 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ===== ORGANIZAÇÃO ===== */}
+        {(userRole === "owner" || userRole === "admin") && (
+          <TabsContent value="organizacao" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  {organization?.name || "Organização"}
+                </CardTitle>
+                <CardDescription>Gerencie os membros e permissões da sua organização</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <Users className="h-4 w-4" /> Membros ({members.length})
+                    </h3>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Membro</TableHead>
+                        <TableHead>Papel</TableHead>
+                        {userRole === "owner" && <TableHead className="w-[100px]">Ações</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {members.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              {member.profiles?.avatar_url && (
+                                <AvatarImage src={member.profiles.avatar_url} />
+                              )}
+                              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                                {member.profiles?.display_name?.charAt(0).toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">
+                              {member.profiles?.display_name || "Sem nome"}
+                              {member.user_id === user?.id && (
+                                <Badge variant="outline" className="ml-2 text-xs">Você</Badge>
+                              )}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {userRole === "owner" && member.user_id !== user?.id ? (
+                              <Select
+                                value={member.role}
+                                onValueChange={(value) =>
+                                  updateMemberRole.mutate({ memberId: member.id, role: value as any })
+                                }
+                              >
+                                <SelectTrigger className="w-[130px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="member">Membro</SelectItem>
+                                  <SelectItem value="viewer">Visualizador</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="secondary" className="gap-1">
+                                <Shield className="h-3 w-3" />
+                                {member.role === "owner" ? "Dono" : 
+                                 member.role === "admin" ? "Admin" : 
+                                 member.role === "member" ? "Membro" : "Visualizador"}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          {userRole === "owner" && (
+                            <TableCell>
+                              {member.user_id !== user?.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => {
+                                    if (confirm("Remover este membro da organização?")) {
+                                      removeMember.mutate(member.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* ===== INTEGRAÇÕES ===== */}
         <TabsContent value="integracoes" className="space-y-6">

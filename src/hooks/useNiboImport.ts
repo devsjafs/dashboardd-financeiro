@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface ImportLogEntry {
   stakeholderName: string;
@@ -22,6 +23,7 @@ interface ImportProgress {
 export const useNiboImport = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { organizationId } = useAuth();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [importLog, setImportLog] = useState<ImportLogEntry[]>([]);
@@ -87,11 +89,8 @@ export const useNiboImport = () => {
         let matchedClient = client;
 
         if (!matchedClient && stakeholderDoc !== "") {
-          // Auto-create client from Nibo stakeholder data
           const codigo = `NIBO-${stakeholderDoc}`;
           
-          // Check if client with this codigo already exists (unique constraint)
-          const existingByCode = clients?.find(c => false); // won't match locally
           const { data: existingClient } = await supabase
             .from("clients")
             .select("id, nome_fantasia, cnpj, razao_social")
@@ -114,6 +113,7 @@ export const useNiboImport = () => {
                 status: "ativo",
                 vencimento: 10,
                 services: [],
+                organization_id: organizationId,
               })
               .select("id")
               .single();
@@ -164,6 +164,7 @@ export const useNiboImport = () => {
           competencia,
           categoria: item.categoryName || item.category?.name || "Nibo",
           status: "não pago",
+          organization_id: organizationId,
         });
         imported++;
         logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported" });
