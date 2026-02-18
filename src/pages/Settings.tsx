@@ -8,9 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
-  Save, Eye, EyeOff, Plus, Trash2, Pencil, CheckCircle2, XCircle,
+  Save, Plus, Trash2, Pencil, CheckCircle2, XCircle,
   Globe, Loader2, Upload, User, Palette, Plug, Sun, Moon, Building2, Users, Shield,
-  Mail, Clock,
+  Mail, Clock, EyeOff, Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,8 +28,6 @@ import {
 interface NiboConnection {
   id: string;
   nome: string;
-  api_token: string;
-  api_key: string;
 }
 
 interface ThomsonReutersConfig {
@@ -149,7 +147,7 @@ const Settings = () => {
   // ---- Nibo ----
   const loadConnections = async () => {
     setLoading(true);
-    const { data } = await supabase.from("nibo_connections").select("*").order("created_at");
+    const { data } = await supabase.from("nibo_connections").select("id, nome").order("created_at");
     setConnections((data as NiboConnection[]) || []);
     setLoading(false);
   };
@@ -159,7 +157,8 @@ const Settings = () => {
   };
 
   const openEditDialog = (conn: NiboConnection) => {
-    setEditingId(conn.id); setNome(conn.nome); setApiToken(conn.api_token); setApiKey(conn.api_key); setDialogOpen(true);
+    // Tokens are write-only from client; clear fields so user must re-enter if they want to update them
+    setEditingId(conn.id); setNome(conn.nome); setApiToken(""); setApiKey(""); setDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -663,9 +662,8 @@ const Settings = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead>
+                   <TableHead>Nome</TableHead>
                       <TableHead>API Token</TableHead>
-                      <TableHead>API Key</TableHead>
                       <TableHead className="w-[100px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -674,17 +672,7 @@ const Settings = () => {
                       <TableRow key={conn.id}>
                         <TableCell className="font-medium">{conn.nome}</TableCell>
                         <TableCell>
-                          <span className="font-mono text-sm">
-                            {showTokens[conn.id] ? conn.api_token : maskValue(conn.api_token)}
-                          </span>
-                          <Button variant="ghost" size="icon" className="ml-1 h-6 w-6" onClick={() => setShowTokens(p => ({ ...p, [conn.id]: !p[conn.id] }))}>
-                            {showTokens[conn.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">
-                            {conn.api_key ? (showTokens[conn.id] ? conn.api_key : maskValue(conn.api_key)) : "—"}
-                          </span>
+                          <span className="font-mono text-sm text-muted-foreground">••••••••••••</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
