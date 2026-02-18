@@ -185,8 +185,12 @@ const Settings = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover esta conexão?")) return;
-    await supabase.from("nibo_connections").delete().eq("id", id);
-    toast({ title: "Sucesso", description: "Conexão removida." });
+    const { error } = await supabase.from("nibo_connections").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível remover a conexão.", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Conexão removida." });
+    }
     loadConnections();
   };
 
