@@ -131,9 +131,10 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
+    const errorId = crypto.randomUUID();
+    console.error('Error ID:', errorId, 'Details:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Falha ao buscar dados do Nibo. Entre em contato com o suporte informando o ID: ' + errorId }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
