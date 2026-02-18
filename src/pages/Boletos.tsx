@@ -21,7 +21,13 @@ const Boletos = () => {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const getCurrentMonth = () => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+  };
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [niboDialogOpen, setNiboDialogOpen] = useState(false);
 
@@ -52,10 +58,11 @@ const Boletos = () => {
     }
   };
 
-  // Filtrar boletos por mês
+  // Filtrar boletos por mês de vencimento (YYYY-MM do campo vencimento)
   const filteredBoletos = boletos?.filter((boleto) => {
     if (selectedMonth === "all") return true;
-    const boletoMonth = boleto.competencia;
+    // vencimento é YYYY-MM-DD, extrai YYYY-MM para comparar
+    const boletoMonth = boleto.vencimento?.slice(0, 7);
     return boletoMonth === selectedMonth;
   }) || [];
 
@@ -75,14 +82,15 @@ const Boletos = () => {
     }).format(value);
   };
 
-  // Gerar lista de meses a partir de 11/2025 para frente (próximos 12 meses)
+  // Gerar lista de meses: 12 meses atrás até 12 meses à frente
   const getMonthOptions = () => {
     const months = [];
-    const startDate = new Date(2025, 10, 1); // 11/2025 (mês 10 = novembro)
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-      const monthStr = date.toISOString().slice(0, 7);
-      months.push(monthStr);
+    const now = new Date();
+    for (let i = -12; i <= 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      months.push(`${yyyy}-${mm}`);
     }
     return months;
   };
