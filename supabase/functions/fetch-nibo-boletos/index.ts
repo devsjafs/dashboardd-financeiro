@@ -11,9 +11,54 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // --- Authentication ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Use anon client with user's token to validate the JWT
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+
+    // Use service role client for privileged DB access
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user's organization
+    const { data: orgMember, error: orgError } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (orgError || !orgMember) {
+      return new Response(
+        JSON.stringify({ error: 'Organization not found for user.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const orgId = orgMember.organization_id;
 
     // Get connection_id from request body
     const body = await req.json().catch(() => ({}));
@@ -26,6 +71,7 @@ Deno.serve(async (req) => {
         .from('nibo_connections')
         .select('*')
         .eq('id', connectionId)
+        .eq('organization_id', orgId)
         .single();
       if (error || !data) {
         return new Response(
@@ -37,7 +83,8 @@ Deno.serve(async (req) => {
     } else {
       const { data, error } = await supabase
         .from('nibo_connections')
-        .select('*');
+        .select('*')
+        .eq('organization_id', orgId);
       if (error || !data || data.length === 0) {
         return new Response(
           JSON.stringify({ error: 'Nenhuma conexão Nibo configurada. Vá em Configurações para adicionar.' }),
