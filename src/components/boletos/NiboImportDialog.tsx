@@ -60,7 +60,8 @@ export const NiboImportDialog = ({ open, onOpenChange, onImport, importing, prog
 
   const loadConnections = async () => {
     setLoading(true);
-    const { data } = await supabase.from("nibo_connections").select("id, nome").order("created_at");
+    // Use the safe view that excludes sensitive API credentials (api_token, api_key)
+    const { data } = await (supabase as any).from("nibo_connections_safe").select("id, nome").order("created_at");
     setConnections((data as NiboConnection[]) || []);
     setSelected("all");
     setLoading(false);
