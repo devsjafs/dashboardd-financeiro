@@ -15,6 +15,7 @@ interface InadimplenciaChartProps {
   boletos: BoletoWithClient[];
 }
 
+// Returns last 12 months as YYYY-MM (DB format)
 function getLast12Months(): string[] {
   const months: string[] = [];
   const now = new Date();
@@ -22,13 +23,14 @@ function getLast12Months(): string[] {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
-    months.push(`${mm}/${yyyy}`);
+    months.push(`${yyyy}-${mm}`);
   }
   return months;
 }
 
 function formatMonthLabel(competencia: string): string {
-  const [mm, yyyy] = competencia.split("/");
+  // competencia is YYYY-MM
+  const [yyyy, mm] = competencia.split("-");
   const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   return `${monthNames[parseInt(mm) - 1]}/${yyyy.slice(2)}`;
 }
@@ -40,6 +42,7 @@ export function InadimplenciaChart({ boletos }: InadimplenciaChartProps) {
   const last12 = getLast12Months();
 
   const data = last12.map((mes) => {
+    // competencia in DB is stored as YYYY-MM
     const doMes = boletos.filter((b) => b.competencia === mes);
     const pago = doMes.filter((b) => b.status === "pago").reduce((s, b) => s + Number(b.valor), 0);
     const naoPago = doMes.filter((b) => b.status === "não pago").reduce((s, b) => s + Number(b.valor), 0);
