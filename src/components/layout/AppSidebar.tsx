@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt, DollarSign, FileText, Mail, Settings, RefreshCw, LogOut } from "lucide-react";
+import { LayoutDashboard, Receipt, DollarSign, FileText, Mail, Settings, RefreshCw, LogOut, AlertTriangle } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -35,6 +35,7 @@ const items: MenuItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, minRole: "viewer" },
   { title: "Pagamentos", url: "/pagamentos", icon: Receipt, minRole: "member" },
   { title: "Boletos", url: "/boletos", icon: FileText, minRole: "member" },
+  { title: "Inadimplência", url: "/inadimplencia", icon: AlertTriangle, minRole: "member" },
   { title: "Comissões", url: "/comissoes", icon: DollarSign, minRole: "admin" },
   { title: "Reajustes", url: "/reajustes", icon: RefreshCw, minRole: "admin" },
   { title: "Emails", url: "/emails", icon: Mail, minRole: "member" },
