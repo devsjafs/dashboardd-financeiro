@@ -47,17 +47,11 @@ Deno.serve(async (req) => {
       connections = data;
     }
 
-    // Calculate yesterday's date
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
     const allItems: any[] = [];
 
     for (const conn of connections) {
       const apiToken = conn.api_token;
-      const filter = `dueDate le ${yesterdayStr}`;
-      const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$filter=${encodeURIComponent(filter)}&$orderby=dueDate&$top=500`;
+      const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$orderby=dueDate&$top=500`;
 
       console.log(`Fetching from Nibo (${conn.nome}):`, niboUrl);
 

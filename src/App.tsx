@@ -16,6 +16,7 @@ import SettingsPage from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import Inadimplencia from "./pages/Inadimplencia";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ function ProtectedRoutes() {
         <Route path="/pagamentos" element={<Payments />} />
         <Route path="/comissoes" element={<Commissions />} />
         <Route path="/boletos" element={<Boletos />} />
+        <Route path="/inadimplencia" element={<Inadimplencia />} />
         <Route path="/reajustes" element={<Reajustes />} />
         <Route path="/emails" element={<Emails />} />
         <Route path="/configuracoes" element={<SettingsPage />} />
