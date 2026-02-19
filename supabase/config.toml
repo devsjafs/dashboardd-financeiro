@@ -2,3 +2,6 @@ project_id = "zldnuanexjfhdnpdxdyy"
 
 [functions.fetch-nibo-boletos]
 verify_jwt = false
+
+[functions.sync-nibo-status]
+verify_jwt = false

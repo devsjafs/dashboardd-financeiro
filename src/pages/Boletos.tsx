@@ -1,9 +1,10 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload } from "lucide-react";
+import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
 import { useNiboImport } from "@/hooks/useNiboImport";
+import { useNiboSync } from "@/hooks/useNiboSync";
 import { BoletoDialog } from "@/components/boletos/BoletoDialog";
 import { BoletosTable } from "@/components/boletos/BoletosTable";
 import { BoletoStatsCard } from "@/components/boletos/BoletoStatsCard";
@@ -18,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Boletos = () => {
   const { boletos, isLoading, createBoleto, updateBoleto, deleteBoleto, markAsPaid, markAsUnpaid } = useBoletos();
   const { importFromNibo, importing, progress, importLog, clearLog } = useNiboImport();
+  const { syncStatus, syncing } = useNiboSync();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
@@ -181,6 +183,15 @@ const Boletos = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              onClick={syncStatus}
+              disabled={syncing || importing}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando..." : "Sincronizar Nibo"}
+            </Button>
             <Button
               variant="outline"
               onClick={() => setNiboDialogOpen(true)}

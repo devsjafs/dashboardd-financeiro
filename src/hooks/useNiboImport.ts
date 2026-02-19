@@ -157,6 +157,7 @@ export const useNiboImport = () => {
           continue;
         }
 
+        const niboScheduleId = item.scheduleId || item.id || item.scheduleID || null;
         await supabase.from("boletos").insert({
           client_id: matchedClient.id,
           valor: value,
@@ -165,7 +166,8 @@ export const useNiboImport = () => {
           categoria: item.categoryName || item.category?.name || "Nibo",
           status: "não pago",
           organization_id: organizationId,
-        });
+          nibo_schedule_id: niboScheduleId ? String(niboScheduleId) : null,
+        } as any);
         imported++;
         logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "imported" });
         setProgress({ current: i + 1, total, imported, skipped });

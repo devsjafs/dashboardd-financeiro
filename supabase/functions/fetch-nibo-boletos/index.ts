@@ -122,7 +122,11 @@ Deno.serve(async (req) => {
           console.log(`Sample item keys for ${conn.nome}:`, JSON.stringify(Object.keys(items[0])));
           console.log(`Sample stakeholder for ${conn.nome}:`, JSON.stringify(items[0].stakeholder));
         }
-        allItems.push(...items.map((item: any) => ({ ...item, _connectionName: conn.nome })));
+        allItems.push(...items.map((item: any) => ({
+          ...item,
+          _connectionName: conn.nome,
+          _connectionApiToken: apiToken,
+        })));
       }
     }
 
