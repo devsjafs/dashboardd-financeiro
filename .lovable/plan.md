@@ -1,118 +1,59 @@
 
-# Plano: Ajuste da API Nibo + Página de Inadimplência
+## Sincronização de Status dos Boletos com o Nibo
 
-## O que será feito
+### Objetivo
+Criar um botão "Sincronizar Status" que consulta o Nibo pelo ID de cada boleto importado e atualiza automaticamente quais foram pagos.
 
-Duas entregas em conjunto:
+### O Problema Atual
+O sistema importa boletos do Nibo, mas não guarda o ID único do Nibo (`scheduleId`). Sem esse ID, não há como perguntar ao Nibo "esse boleto foi pago?" — só dá para deduzir pelo CNPJ + valor + data, o que é menos confiável.
 
-1. **Correção do filtro da API Nibo** — importar todos os boletos em aberto (passados e futuros), não só os vencidos até ontem.
-2. **Nova página "Inadimplência"** — painel completo com KPIs, gráfico mensal, ranking de devedores e lista de boletos vencidos com ação de marcar como pago.
+### Solução: 3 Etapas
 
-Nenhuma alteração no banco de dados é necessária. Tudo usa dados já existentes em `boletos` e `clients`.
+**Etapa 1 — Banco de Dados: Adicionar coluna `nibo_schedule_id`**
+- Criar uma migration que adiciona a coluna `nibo_schedule_id TEXT` na tabela `boletos`
+- Ela ficará nula para boletos já existentes ou criados manualmente
 
----
+**Etapa 2 — Atualizar o Import: Salvar o ID do Nibo**
+- Atualizar `supabase/functions/fetch-nibo-boletos/index.ts` para retornar o campo `scheduleId` (ou equivalente) de cada item do Nibo
+- Atualizar `src/hooks/useNiboImport.ts` para gravar esse ID no campo `nibo_schedule_id` ao inserir no banco
 
-## Parte 1 — Ajuste da API Nibo
+**Etapa 3 — Nova Função de Sincronização**
+- Criar nova edge function `sync-nibo-status` que:
+  1. Busca todos os boletos locais com `nibo_schedule_id != null` e `status = "não pago"`
+  2. Para cada um, consulta a API do Nibo pelo endpoint de schedule individual (`/schedules/{id}`) para ver o status atual
+  3. Se o Nibo indicar que foi pago, atualiza `status = "pago"` e `data_pagamento` no banco
+  4. Retorna um resumo: X atualizados, Y sem mudança
+- Adicionar hook `useNiboSync` no frontend
+- Adicionar botão "Sincronizar Status" na página de Boletos ao lado do botão "Importar Nibo"
 
-### Arquivo: `supabase/functions/fetch-nibo-boletos/index.ts`
+### Technical Details
 
-Remover as 3 linhas que calculam a data de ontem (linhas 50-53) e simplificar a URL eliminando o `$filter`:
-
+**Migration SQL:**
+```sql
+ALTER TABLE public.boletos ADD COLUMN nibo_schedule_id TEXT;
+CREATE INDEX idx_boletos_nibo_schedule_id ON public.boletos(nibo_schedule_id);
 ```
-// Antes (linhas 50-60):
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
-const yesterdayStr = yesterday.toISOString().split('T')[0];
-...
-const filter = `dueDate le ${yesterdayStr}`;
-const niboUrl = `...?$filter=${encodeURIComponent(filter)}&$orderby=dueDate&$top=500`;
 
-// Depois:
-const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$orderby=dueDate&$top=500`;
-```
-
-O endpoint `/schedules/credit/opened` do Nibo já filtra por status "aberto" nativamente. Não precisa de filtro extra. A deduplicação existente (por `client_id + vencimento + valor`) evita duplicatas em re-importações.
-
-A função será reimplantada automaticamente após a edição.
-
----
-
-## Parte 2 — Página de Inadimplência
-
-### Arquivos a criar
-
-**`src/pages/Inadimplencia.tsx`** — Página principal. Usa `useBoletos()` já existente, calcula tudo no frontend.
-
-**`src/components/inadimplencia/DebtSummaryCards.tsx`** — 4 cards de KPI:
-- Total em Aberto (todos os "não pago")
-- Total Vencido (boletos "não pago" com `vencimento < hoje`)
-- A Vencer em 30 dias (boletos "não pago" com vencimento entre hoje e +30 dias)
-- Taxa de Inadimplência do mês atual: `(vencidos no mês / total boletos do mês) × 100%`
-
-**`src/components/inadimplencia/InadimplenciaChart.tsx`** — Gráfico de barras empilhadas com `recharts` (já instalado) mostrando os últimos 12 meses, agrupado por `competencia`. Barras: Pago (verde) vs Não Pago (vermelho).
-
-**`src/components/inadimplencia/TopDebtorsTable.tsx`** — Ranking dos clientes com mais débito em aberto:
-- Nome do cliente
-- Quantidade de boletos em aberto
-- Valor total em aberto
-- Data do boleto mais antigo vencido
-
-**`src/components/inadimplencia/OverdueBoletosTable.tsx`** — Lista detalhada de todos os boletos vencidos não pagos:
-- Nome do cliente | Categoria | Competência | Vencimento | Dias em atraso | Valor | Ação
-- Badge colorido por severidade:
-  - 1–30 dias → amarelo
-  - 31–60 dias → laranja
-  - +60 dias → vermelho
-- Botão "Marcar como pago" reutilizando `markAsPaid` do `useBoletos()`
-
-### Arquivos a modificar
-
-**`src/components/layout/AppSidebar.tsx`**
-- Importar `AlertTriangle` do `lucide-react`
-- Adicionar item no array `items[]`:
-  ```ts
-  { title: "Inadimplência", url: "/inadimplencia", icon: AlertTriangle, minRole: "member" }
-  ```
-  Posicionado após "Boletos" (antes de Comissões)
-
-**`src/App.tsx`**
-- Importar `Inadimplencia` de `./pages/Inadimplencia`
-- Adicionar rota: `<Route path="/inadimplencia" element={<Inadimplencia />} />`
-
----
-
-## Estrutura visual da página
-
+**Fluxo do botão Sincronizar:**
 ```text
-+----------------------------------------------------------+
-|  Inadimplência & Resumo Financeiro                        |
-+---------------+-----------+--------------+---------------+
-| Total Aberto  | Vencido   | A Vencer 30d | Taxa Inad. %  |
-| R$ 45.000     | R$ 12.000 | R$ 8.000     | 18,5%         |
-+---------------+-----------+--------------+---------------+
-|                                                          |
-|  [Gráfico de barras: Pago vs Não Pago - últimos 12m]    |
-|                                                          |
-+----------------------------------------------------------+
-|  Top Clientes Inadimplentes                              |
-|  Cliente      | Boletos | Total Aberto | Mais Antigo     |
-|  Empresa X    |    3    | R$ 8.500     | 67 dias         |
-+----------------------------------------------------------+
-|  Boletos Vencidos                                        |
-|  Cliente | Categoria | Venc.   | Atraso   | Valor | Ação |
-|  Emp. X  | Nibo      | 10/12   | 67 dias  | 2.800 | Pago |
-+----------------------------------------------------------+
+[Usuário clica "Sincronizar"]
+        ↓
+[Edge Function: busca boletos locais "não pago" com nibo_schedule_id]
+        ↓
+[Para cada boleto: GET /schedules/credit/{id} no Nibo]
+        ↓
+[Se status = pago → UPDATE boletos SET status='pago', data_pagamento=...]
+        ↓
+[Retorna: X boletos atualizados para pago]
 ```
 
----
+### Arquivos Alterados
+- `supabase/migrations/` — nova migration com a coluna `nibo_schedule_id`
+- `supabase/functions/fetch-nibo-boletos/index.ts` — incluir `scheduleId` na resposta
+- `src/hooks/useNiboImport.ts` — salvar `nibo_schedule_id` no insert
+- `supabase/functions/sync-nibo-status/index.ts` — nova edge function de sync
+- `src/hooks/useNiboSync.ts` — novo hook para chamar a edge function
+- `src/pages/Boletos.tsx` — adicionar botão "Sincronizar Status"
 
-## Sequência de implementação
-
-1. Editar `supabase/functions/fetch-nibo-boletos/index.ts` (remover filtro de data)
-2. Criar `src/components/inadimplencia/DebtSummaryCards.tsx`
-3. Criar `src/components/inadimplencia/InadimplenciaChart.tsx`
-4. Criar `src/components/inadimplencia/TopDebtorsTable.tsx`
-5. Criar `src/components/inadimplencia/OverdueBoletosTable.tsx`
-6. Criar `src/pages/Inadimplencia.tsx`
-7. Modificar `src/components/layout/AppSidebar.tsx` (adicionar item no menu)
-8. Modificar `src/App.tsx` (adicionar rota)
+### Observação Importante
+Boletos criados manualmente ou importados via XLSX não terão `nibo_schedule_id`, portanto o sync só funcionará para os boletos importados via Nibo. Isso é exibido claramente no resultado da sincronização.
