@@ -22,6 +22,7 @@ export type Database = {
           created_at: string
           data_pagamento: string | null
           id: string
+          nibo_schedule_id: string | null
           organization_id: string | null
           status: string
           updated_at: string
@@ -35,6 +36,7 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           id?: string
+          nibo_schedule_id?: string | null
           organization_id?: string | null
           status?: string
           updated_at?: string
@@ -48,6 +50,7 @@ export type Database = {
           created_at?: string
           data_pagamento?: string | null
           id?: string
+          nibo_schedule_id?: string | null
           organization_id?: string | null
           status?: string
           updated_at?: string
