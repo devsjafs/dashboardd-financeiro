@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw } from "lucide-react";
+import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw, MoreHorizontal, Trash2 } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
 import { useNiboImport } from "@/hooks/useNiboImport";
 import { useNiboSync } from "@/hooks/useNiboSync";
+import { useDeleteAllBoletos } from "@/hooks/useDeleteAllBoletos";
+import { useAuth } from "@/contexts/AuthContext";
 import { BoletoDialog } from "@/components/boletos/BoletoDialog";
 import { BoletosTable } from "@/components/boletos/BoletosTable";
 import { BoletoStatsCard } from "@/components/boletos/BoletoStatsCard";
+import { BoletoDeleteAllDialog } from "@/components/boletos/BoletoDeleteAllDialog";
 import { BoletoFormData, BoletoWithClient } from "@/types/boleto";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImportDialog } from "@/components/dashboard/ImportDialog";
@@ -15,13 +18,23 @@ import { NiboImportDialog } from "@/components/boletos/NiboImportDialog";
 import { exportBoletosToXLSX, importBoletosFromXLSX, downloadBoletoTemplate } from "@/utils/boletoExportImport";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Boletos = () => {
   const { boletos, isLoading, createBoleto, updateBoleto, deleteBoleto, markAsPaid, markAsUnpaid } = useBoletos();
   const { importFromNibo, importing, progress, importLog, clearLog } = useNiboImport();
   const { syncStatus, syncing } = useNiboSync();
+  const { deleteAll, isDeleting } = useDeleteAllBoletos();
+  const { userRole } = useAuth();
   const { toast } = useToast();
   const hasSynced = useRef(false);
+
   // Auto-sync on first page load
   useEffect(() => {
     if (!hasSynced.current) {
@@ -32,6 +45,9 @@ const Boletos = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllScope, setDeleteAllScope] = useState<"month" | "all">("all");
+
   const getCurrentMonth = () => {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -41,6 +57,8 @@ const Boletos = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [niboDialogOpen, setNiboDialogOpen] = useState(false);
+
+  const canDeleteAll = userRole === "owner" || userRole === "admin";
 
   const handleEdit = (boleto: BoletoWithClient) => {
     setEditingBoleto(boleto);
@@ -64,36 +82,42 @@ const Boletos = () => {
 
   const handleDialogChange = (open: boolean) => {
     setDialogOpen(open);
-    if (!open) {
-      setEditingBoleto(null);
-    }
+    if (!open) setEditingBoleto(null);
   };
 
-  // Filtrar boletos por mês de vencimento (YYYY-MM do campo vencimento)
-  const filteredBoletos = boletos?.filter((boleto) => {
+  const handleDeleteAllClick = (scope: "month" | "all") => {
+    setDeleteAllScope(scope);
+    setDeleteAllOpen(true);
+  };
+
+  const handleDeleteAllConfirm = async () => {
+    const monthFilter = deleteAllScope === "month" && selectedMonth !== "all" ? selectedMonth : null;
+    await deleteAll(monthFilter);
+  };
+
+  // Filter boletos by selected month
+  const filteredBoletos = (boletos?.filter((boleto) => {
+    if ((boleto as any).deleted_at) return false; // exclude soft-deleted
     if (selectedMonth === "all") return true;
-    // vencimento é YYYY-MM-DD, extrai YYYY-MM para comparar
     const boletoMonth = boleto.vencimento?.slice(0, 7);
     return boletoMonth === selectedMonth;
-  }) || [];
+  }) || []) as BoletoWithClient[];
 
-  // Calcular estatísticas
-  const totalValue = filteredBoletos.reduce((sum, boleto) => sum + Number(boleto.valor), 0);
-  const paidValue = filteredBoletos
-    .filter((b) => b.status === "pago")
-    .reduce((sum, boleto) => sum + Number(boleto.valor), 0);
-  const unpaidValue = filteredBoletos
-    .filter((b) => b.status === "não pago")
-    .reduce((sum, boleto) => sum + Number(boleto.valor), 0);
+  // Stats (exclude cancelled)
+  const activeBoletos = filteredBoletos.filter(b => (b.status as string) !== "cancelado");
+  const totalValue = activeBoletos.reduce((sum, b) => sum + Number(b.valor), 0);
+  const paidValue = activeBoletos.filter(b => b.status === "pago").reduce((sum, b) => sum + Number(b.valor), 0);
+  const unpaidValue = activeBoletos.filter(b => b.status === "não pago").reduce((sum, b) => sum + Number(b.valor), 0);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
+  // Count for delete dialog
+  const deleteTargetBoletos = deleteAllScope === "month" && selectedMonth !== "all"
+    ? filteredBoletos
+    : (boletos?.filter(b => !(b as any).deleted_at) || []) as BoletoWithClient[];
+  const deleteTargetPaidCount = deleteTargetBoletos.filter(b => b.status === "pago").length;
 
-  // Gerar lista de meses: 12 meses atrás até 12 meses à frente
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
   const getMonthOptions = () => {
     const months = [];
     const now = new Date();
@@ -107,28 +131,18 @@ const Boletos = () => {
   };
 
   const handleExport = () => {
-    if (!boletos || boletos.length === 0) {
-      toast({
-        title: "Nenhum boleto",
-        description: "Não há boletos para exportar.",
-        variant: "destructive",
-      });
+    if (!filteredBoletos || filteredBoletos.length === 0) {
+      toast({ title: "Nenhum boleto", description: "Não há boletos para exportar.", variant: "destructive" });
       return;
     }
     exportBoletosToXLSX(filteredBoletos);
-    toast({
-      title: "Dados exportados",
-      description: "Os boletos foram exportados para XLSX com sucesso.",
-    });
+    toast({ title: "Dados exportados", description: "Os boletos foram exportados para XLSX com sucesso." });
   };
 
   const handleImport = async (file: File) => {
     try {
       const importedBoletos = await importBoletosFromXLSX(file);
-      
-      // Buscar clientes para mapear CNPJ -> client_id
       const { data: clients } = await supabase.from("clients").select("id, cnpj");
-      
       for (const boleto of importedBoletos) {
         const client = clients?.find(c => c.cnpj === boleto.client_cnpj);
         if (client) {
@@ -143,17 +157,9 @@ const Boletos = () => {
           });
         }
       }
-      
-      toast({
-        title: "Dados importados",
-        description: `${importedBoletos.length} boletos foram importados com sucesso.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao importar",
-        description: "Ocorreu um erro ao importar os boletos.",
-        variant: "destructive",
-      });
+      toast({ title: "Dados importados", description: `${importedBoletos.length} boletos foram importados com sucesso.` });
+    } catch {
+      toast({ title: "Erro ao importar", description: "Ocorreu um erro ao importar os boletos.", variant: "destructive" });
     }
   };
 
@@ -178,9 +184,9 @@ const Boletos = () => {
             <h1 className="text-3xl font-bold">Boletos</h1>
             <p className="text-muted-foreground">Gerencie os boletos dos clientes</p>
           </div>
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-2 items-center flex-wrap justify-end">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Todos os meses" />
               </SelectTrigger>
               <SelectContent>
@@ -192,6 +198,7 @@ const Boletos = () => {
                 ))}
               </SelectContent>
             </Select>
+
             <Button
               variant="outline"
               onClick={() => syncStatus(false)}
@@ -201,6 +208,7 @@ const Boletos = () => {
               <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Sincronizando..." : "Sincronizar Nibo"}
             </Button>
+
             <Button
               variant="outline"
               onClick={() => setNiboDialogOpen(true)}
@@ -210,44 +218,58 @@ const Boletos = () => {
               <CloudDownload className="w-4 h-4" />
               {importing ? "Importando..." : "Importar Nibo"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setImportDialogOpen(true)}
-              className="gap-2"
-            >
+
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
               <Upload className="w-4 h-4" />
               Importar XLSX
             </Button>
+
             <Button variant="outline" onClick={handleExport} className="gap-2">
               <Download className="w-4 h-4" />
               Exportar
             </Button>
+
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Adicionar Boleto
+              Adicionar
             </Button>
+
+            {/* Advanced actions — only for owner/admin */}
+            {canDeleteAll && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {selectedMonth !== "all" && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive gap-2"
+                      onClick={() => handleDeleteAllClick("month")}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir boletos de {formatMonthDisplay(selectedMonth)}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive gap-2"
+                    onClick={() => handleDeleteAllClick("all")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir todos os boletos
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <BoletoStatsCard
-            title="Total a Receber"
-            value={formatCurrency(totalValue)}
-            icon={DollarSign}
-            iconColor="text-blue-500"
-          />
-          <BoletoStatsCard
-            title="Recebido"
-            value={formatCurrency(paidValue)}
-            icon={CheckCircle2}
-            iconColor="text-green-500"
-          />
-          <BoletoStatsCard
-            title="Pendente"
-            value={formatCurrency(unpaidValue)}
-            icon={XCircle}
-            iconColor="text-red-500"
-          />
+          <BoletoStatsCard title="Total a Receber" value={formatCurrency(totalValue)} icon={DollarSign} iconColor="text-blue-500" />
+          <BoletoStatsCard title="Recebido" value={formatCurrency(paidValue)} icon={CheckCircle2} iconColor="text-green-500" />
+          <BoletoStatsCard title="Pendente" value={formatCurrency(unpaidValue)} icon={XCircle} iconColor="text-red-500" />
         </div>
 
         <BoletosTable
@@ -277,13 +299,21 @@ const Boletos = () => {
         <NiboImportDialog
           open={niboDialogOpen}
           onOpenChange={setNiboDialogOpen}
-          onImport={(connId) => {
-            importFromNibo(connId);
-          }}
+          onImport={(connId) => { importFromNibo(connId); }}
           importing={importing}
           progress={progress}
           importLog={importLog}
           onClearLog={clearLog}
+        />
+
+        <BoletoDeleteAllDialog
+          open={deleteAllOpen}
+          onOpenChange={setDeleteAllOpen}
+          onConfirm={handleDeleteAllConfirm}
+          totalCount={deleteTargetBoletos.length}
+          paidCount={deleteTargetPaidCount}
+          monthFilter={deleteAllScope === "month" && selectedMonth !== "all" ? selectedMonth : null}
+          isDeleting={isDeleting}
         />
       </div>
     </div>

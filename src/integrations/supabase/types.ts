@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          id: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          id?: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       boletos: {
         Row: {
           categoria: string
@@ -21,8 +48,11 @@ export type Database = {
           competencia: string
           created_at: string
           data_pagamento: string | null
+          deleted_at: string | null
           id: string
+          nibo_deleted_at: string | null
           nibo_schedule_id: string | null
+          nibo_synced_at: string | null
           organization_id: string | null
           status: string
           updated_at: string
@@ -35,8 +65,11 @@ export type Database = {
           competencia: string
           created_at?: string
           data_pagamento?: string | null
+          deleted_at?: string | null
           id?: string
+          nibo_deleted_at?: string | null
           nibo_schedule_id?: string | null
+          nibo_synced_at?: string | null
           organization_id?: string | null
           status?: string
           updated_at?: string
@@ -49,8 +82,11 @@ export type Database = {
           competencia?: string
           created_at?: string
           data_pagamento?: string | null
+          deleted_at?: string | null
           id?: string
+          nibo_deleted_at?: string | null
           nibo_schedule_id?: string | null
+          nibo_synced_at?: string | null
           organization_id?: string | null
           status?: string
           updated_at?: string
