@@ -91,61 +91,64 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Strategy: fetch ALL schedules (open + recently finished) from Nibo API
-    // and build a lookup map by scheduleId
+    // Strategy: fetch ALL open schedules from Nibo API (includes isPaid field)
+    // and also fetch paid/closed schedules via a separate endpoint
     const niboStatusMap = new Map<string, { paid: boolean; paymentDate: string | null; newDueDate: string | null }>();
 
     for (const conn of connections) {
-      // Fetch open schedules
-      const openUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$top=1000`;
-      // Fetch finished/paid schedules (last 90 days)
-      const finishedUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/finished?$top=1000`;
-
       const headers: Record<string, string> = {
         'ApiToken': conn.api_token,
         'Accept': 'application/json',
       };
 
-      const [openResp, finishedResp] = await Promise.allSettled([
-        fetch(openUrl, { method: 'GET', headers }),
-        fetch(finishedUrl, { method: 'GET', headers }),
-      ]);
+      // Fetch open schedules — these include isPaid, writeOffDate fields
+      const openUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$top=1000`;
+      const openResp = await fetch(openUrl, { method: 'GET', headers });
 
-      // Process open schedules (may have changed due date)
-      if (openResp.status === 'fulfilled' && openResp.value.ok) {
-        const data = await openResp.value.json();
+      if (openResp.ok) {
+        const data = await openResp.json();
         const items = data?.items || (Array.isArray(data) ? data : []);
         console.log(`Open schedules from ${conn.nome}:`, items.length);
+        if (items.length > 0) {
+          console.log(`Sample open item:`, JSON.stringify(items[0]).substring(0, 400));
+        }
         for (const item of items) {
           const id = String(item.scheduleId || item.id || '');
           if (!id) continue;
           const dueDate = item.dueDate?.split('T')[0] || null;
-          niboStatusMap.set(id, { paid: false, paymentDate: null, newDueDate: dueDate });
+          // isPaid flag exists in the opened endpoint too
+          const isPaid = item.isPaid === true;
+          const paymentDate = isPaid
+            ? (item.writeOffDate?.split('T')[0] || item.paymentDate?.split('T')[0] || item.dueDate?.split('T')[0] || new Date().toISOString().split('T')[0])
+            : null;
+          niboStatusMap.set(id, { paid: isPaid, paymentDate, newDueDate: dueDate });
         }
-      } else if (openResp.status === 'fulfilled') {
-        const errText = await openResp.value.text();
-        console.error(`Nibo open API error for ${conn.nome}:`, openResp.value.status, errText);
+      } else {
+        const errText = await openResp.text();
+        console.error(`Nibo open API error for ${conn.nome}:`, openResp.status, errText);
       }
 
-      // Process finished/paid schedules
-      if (finishedResp.status === 'fulfilled' && finishedResp.value.ok) {
-        const data = await finishedResp.value.json();
+      // Try to also fetch schedules that are fully closed (writeOff done)
+      // Nibo endpoint for closed/paid: /schedules/credit with status filter
+      const closedUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit?$filter=status eq 'finished'&$top=500`;
+      const closedResp = await fetch(closedUrl, { method: 'GET', headers });
+      if (closedResp.ok) {
+        const data = await closedResp.json();
         const items = data?.items || (Array.isArray(data) ? data : []);
-        console.log(`Finished schedules from ${conn.nome}:`, items.length);
+        console.log(`Closed schedules from ${conn.nome}:`, items.length);
         for (const item of items) {
           const id = String(item.scheduleId || item.id || '');
           if (!id) continue;
-          // paymentDate or dueDate as fallback
           const paymentDate =
+            item.writeOffDate?.split('T')[0] ||
             item.paymentDate?.split('T')[0] ||
-            item.paidDate?.split('T')[0] ||
             item.dueDate?.split('T')[0] ||
             new Date().toISOString().split('T')[0];
           niboStatusMap.set(id, { paid: true, paymentDate, newDueDate: null });
         }
-      } else if (finishedResp.status === 'fulfilled') {
-        const errText = await finishedResp.value.text();
-        console.error(`Nibo finished API error for ${conn.nome}:`, finishedResp.value.status, errText);
+      } else {
+        const errText = await closedResp.text();
+        console.log(`Closed endpoint for ${conn.nome} returned:`, closedResp.status, errText.substring(0, 200));
       }
     }
 
@@ -162,45 +165,58 @@ Deno.serve(async (req) => {
       const niboData = niboStatusMap.get(niboId);
 
       if (!niboData) {
-        // Not found in open or finished — try individual lookup as fallback
+        // Not found in /opened — boleto may have been paid or cancelled in Nibo
+        // Try individual lookup using the correct Nibo endpoint
         let paid = false;
         let paymentDate: string | null = null;
         let foundIndividual = false;
 
         for (const conn of connections) {
           try {
-            const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/${niboId}`;
-            const resp = await fetch(url, {
-              method: 'GET',
-              headers: { 'ApiToken': conn.api_token, 'Accept': 'application/json' },
-            });
+            // Try different possible endpoints for individual schedule
+            const endpoints = [
+              `https://api.nibo.com.br/empresas/v1/schedules/${niboId}`,
+              `https://api.nibo.com.br/empresas/v1/schedules/credit/${niboId}`,
+            ];
 
-            if (!resp.ok) {
-              await resp.text();
-              continue;
+            for (const url of endpoints) {
+              const resp = await fetch(url, {
+                method: 'GET',
+                headers: { 'ApiToken': conn.api_token, 'Accept': 'application/json' },
+              });
+
+              if (!resp.ok) {
+                const txt = await resp.text();
+                console.log(`Endpoint ${url} returned ${resp.status}:`, txt.substring(0, 100));
+                continue;
+              }
+
+              const data = await resp.json();
+              foundIndividual = true;
+              console.log(`Individual lookup success for ${niboId} at ${url}:`, JSON.stringify(data).substring(0, 500));
+
+              // Check isPaid field (same as in /opened response)
+              if (data?.isPaid === true || data?.paidValue > 0) {
+                paid = true;
+                paymentDate =
+                  data?.writeOffDate?.split('T')[0] ||
+                  data?.paymentDate?.split('T')[0] ||
+                  data?.dueDate?.split('T')[0] ||
+                  new Date().toISOString().split('T')[0];
+              }
+              break;
             }
 
-            const data = await resp.json();
-            foundIndividual = true;
-            console.log(`Individual lookup for ${niboId}:`, JSON.stringify(data).substring(0, 300));
-
-            const status = data?.status || data?.scheduleStatus || data?.statusName || '';
-            const statusLower = status.toLowerCase();
-            if (statusLower === 'finished' || statusLower === 'paid' || statusLower === 'pago' || statusLower === 'finalizado') {
-              paid = true;
-              paymentDate =
-                data?.paymentDate?.split('T')[0] ||
-                data?.paidDate?.split('T')[0] ||
-                data?.dueDate?.split('T')[0] ||
-                new Date().toISOString().split('T')[0];
-            }
-            break;
-          } catch {
+            if (foundIndividual) break;
+          } catch (e) {
+            console.error(`Error looking up ${niboId}:`, e);
             continue;
           }
         }
 
         if (!foundIndividual) {
+          // Not found anywhere — may have been deleted in Nibo, skip
+          console.log(`Schedule ${niboId} not found in any Nibo endpoint — may be deleted`);
           notFound++;
           continue;
         }
