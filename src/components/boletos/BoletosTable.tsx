@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Unlink } from "lucide-react";
 import { BoletoWithClient } from "@/types/boleto";
 import { formatDateString } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BoletosTableProps {
   boletos: BoletoWithClient[];
@@ -208,24 +209,51 @@ export const BoletosTable = ({
                   <TableCell>{formatDateString(boleto.vencimento)}</TableCell>
                   <TableCell>{formatCurrency(boleto.valor)}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant={boleto.status === "pago" ? "default" : "destructive"}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        boleto.status === "pago"
-                          ? onMarkAsUnpaid(boleto.id)
-                          : onMarkAsPaid(boleto.id)
-                      }
-                    >
-                      {boleto.status === "pago" ? "PAGO" : "NÃO PAGO"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {(boleto as any).status === "cancelado" ? (
+                        <Badge variant="secondary" className="text-muted-foreground">
+                          CANCELADO
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={boleto.status === "pago" ? "default" : "destructive"}
+                          className="cursor-pointer"
+                          onClick={() =>
+                            boleto.status === "pago"
+                              ? onMarkAsUnpaid(boleto.id)
+                              : onMarkAsPaid(boleto.id)
+                          }
+                        >
+                          {boleto.status === "pago" ? "PAGO" : "NÃO PAGO"}
+                        </Badge>
+                      )}
+                      {!(boleto as any).nibo_schedule_id && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">
+                                <Unlink className="h-3 w-3 text-muted-foreground/60" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">Sem vínculo Nibo — criado manualmente</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {boleto.data_pagamento ? formatDateString(boleto.data_pagamento) : "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => onEdit(boleto)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(boleto)}
+                        disabled={(boleto as any).status === "cancelado"}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => onDelete(boleto.id)}>

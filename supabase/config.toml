@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sync-nibo-status]
 verify_jwt = false
+
+[functions.delete-all-boletos]
+verify_jwt = false
