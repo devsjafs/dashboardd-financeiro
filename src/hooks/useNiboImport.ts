@@ -143,21 +143,33 @@ export const useNiboImport = () => {
 
         const { data: existing } = await supabase
           .from("boletos")
-          .select("id")
+          .select("id, nibo_schedule_id")
           .eq("client_id", matchedClient.id)
           .eq("vencimento", dueDate)
           .eq("valor", value)
           .limit(1);
 
+        const niboScheduleId = item.scheduleId || item.id || item.scheduleID || null;
+
         if (existing && existing.length > 0) {
-          skipped++;
-          logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason: "Boleto duplicado (já existe)" });
+          const existingBoleto = existing[0];
+          // If existing boleto has no nibo_schedule_id, update it
+          if (!existingBoleto.nibo_schedule_id && niboScheduleId) {
+            await supabase
+              .from("boletos")
+              .update({ nibo_schedule_id: String(niboScheduleId) })
+              .eq("id", existingBoleto.id);
+            skipped++;
+            logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason: "ID Nibo atualizado no boleto existente" });
+          } else {
+            skipped++;
+            logs.push({ stakeholderName, stakeholderDoc, value, dueDate, status: "skipped", reason: "Boleto duplicado (já existe)" });
+          }
           setProgress({ current: i + 1, total, imported, skipped });
           setImportLog([...logs]);
           continue;
         }
 
-        const niboScheduleId = item.scheduleId || item.id || item.scheduleID || null;
         await supabase.from("boletos").insert({
           client_id: matchedClient.id,
           valor: value,
