@@ -5,85 +5,73 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Fetch receipts from Nibo /receipts, filtering by date range to reduce load
-async function fetchReceipts(apiToken: string, connName: string): Promise<Map<string, string>> {
-  // scheduleId -> paymentDate
-  const paidMap = new Map<string, string>();
+// Fetch all open credit schedules (paginated) — returns map of scheduleId -> { dueDate }
+async function fetchOpenSchedules(apiToken: string, connName: string): Promise<Map<string, { dueDate: string | null }>> {
+  const map = new Map<string, { dueDate: string | null }>();
   const headers = { 'ApiToken': apiToken, 'Accept': 'application/json' };
-
-  // Fetch receipts paginated - Nibo ignores orderby, returns oldest first
-  // Fetch last page by using high skip to get most recent entries
-  // Strategy: fetch total count first, then skip to near-end
-  const countUrl = `https://api.nibo.com.br/empresas/v1/receipts?$top=1&$inlinecount=allpages`;
-  const countResp = await fetch(countUrl, { method: 'GET', headers });
   let skip = 0;
-  if (countResp.ok) {
-    const countData = await countResp.json();
-    const total = countData?.count || countData?.['@odata.count'] || 0;
-    skip = Math.max(0, total - 500); // get last 500
-    console.log(`[${connName}] Receipts total: ${total}, skip: ${skip}`);
-  }
-  const url = `https://api.nibo.com.br/empresas/v1/receipts?$top=500&$skip=${skip}`;
-  const resp = await fetch(url, { method: 'GET', headers });
+  const top = 500;
 
-  if (resp.ok) {
-    const data = await resp.json();
-    const items = data?.items || (Array.isArray(data) ? data : []);
-    console.log(`[${connName}] Receipts (last 90d): ${items.length}`);
+  while (true) {
+    const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$top=${top}&$skip=${skip}&$orderby=dueDate`;
+    const resp = await fetch(url, { method: 'GET', headers });
 
-    for (const item of items) {
-      const paymentDate = item.date?.split('T')[0] || new Date().toISOString().split('T')[0];
-      if (item.scheduleId) {
-        paidMap.set(String(item.scheduleId), paymentDate);
-      }
-      if (Array.isArray(item.schedules)) {
-        for (const s of item.schedules) {
-          const sid = String(s.scheduleId || s.id || '');
-          if (sid) paidMap.set(sid, paymentDate);
-        }
-      }
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.log(`[${connName}] Open schedules error ${resp.status}: ${errText.substring(0, 200)}`);
+      break;
     }
-  } else {
-    const errText = await resp.text();
-    console.log(`[${connName}] Receipts error ${resp.status}: ${errText.substring(0, 200)}`);
-  }
 
-  return paidMap;
-}
-
-// Fetch open schedules from Nibo, returns map of scheduleId -> { isPaid, dueDate, paidDate }
-async function fetchOpenSchedules(apiToken: string, connName: string): Promise<Map<string, { isPaid: boolean; dueDate: string | null; paidDate: string | null }>> {
-  const map = new Map<string, { isPaid: boolean; dueDate: string | null; paidDate: string | null }>();
-  const headers = { 'ApiToken': apiToken, 'Accept': 'application/json' };
-
-  const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$top=2000`;
-  const resp = await fetch(url, { method: 'GET', headers });
-
-  if (resp.ok) {
     const data = await resp.json();
     const items = data?.items || (Array.isArray(data) ? data : []);
-    console.log(`[${connName}] Open schedules: ${items.length}`);
 
     for (const item of items) {
       const id = String(item.scheduleId || item.id || '');
       if (!id) continue;
-
       const dueDate = item.dueDate?.split('T')[0] || null;
-      const paidValue = item.paidValue || 0;
-      const openValue = item.openValue ?? item.value ?? 0;
-      const isPaid = item.isPaid === true || (paidValue > 0 && openValue <= 0);
-      const paidDate = isPaid
-        ? (item.writeOffDate?.split('T')[0] || item.paymentDate?.split('T')[0] || dueDate)
-        : null;
-
-      map.set(id, { isPaid, dueDate, paidDate });
+      map.set(id, { dueDate });
     }
-  } else {
-    const errText = await resp.text();
-    console.log(`[${connName}] Open schedules error ${resp.status}: ${errText.substring(0, 200)}`);
+
+    if (items.length < top) break; // last page
+    skip += top;
   }
 
+  console.log(`[${connName}] Total open schedules fetched: ${map.size}`);
   return map;
+}
+
+// Check a single schedule to see if it was paid
+// Returns null if not found or error, or { isPaid, paidDate, dueDate }
+async function checkSingleSchedule(
+  apiToken: string,
+  scheduleId: string
+): Promise<{ isPaid: boolean; paidDate: string | null; dueDate: string | null } | null> {
+  const headers = { 'ApiToken': apiToken, 'Accept': 'application/json' };
+
+  // Try the credit schedule endpoint
+  const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/${scheduleId}`;
+  const resp = await fetch(url, { method: 'GET', headers });
+
+  if (!resp.ok) return null;
+
+  const item = await resp.json();
+
+  const dueDate = item.dueDate?.split('T')[0] || null;
+  const paidValue = item.paidValue || 0;
+  const openValue = item.openValue ?? item.value ?? 0;
+  const isPaid =
+    item.isPaid === true ||
+    item.status === 'finished' ||
+    item.status === 'paid' ||
+    item.status === 'pago' ||
+    item.status === 'finalizado' ||
+    (paidValue > 0 && openValue <= 0);
+
+  const paidDate = isPaid
+    ? (item.writeOffDate?.split('T')[0] || item.paymentDate?.split('T')[0] || dueDate)
+    : null;
+
+  return { isPaid, paidDate, dueDate };
 }
 
 Deno.serve(async (req) => {
@@ -136,6 +124,7 @@ Deno.serve(async (req) => {
 
     const orgId = orgMember.organization_id;
 
+    // Fetch unpaid boletos with a nibo_schedule_id
     const { data: boletos, error: boletosError } = await supabase
       .from('boletos')
       .select('id, nibo_schedule_id, vencimento, valor')
@@ -169,36 +158,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch all data in parallel for all connections
-    const allFetches = connections.flatMap(conn => [
-      fetchReceipts(conn.api_token, conn.nome),
-      fetchOpenSchedules(conn.api_token, conn.nome),
-    ]);
+    // Fetch open schedules from ALL connections in parallel
+    const openMaps = await Promise.all(
+      connections.map(conn => fetchOpenSchedules(conn.api_token, conn.nome))
+    );
 
-    const results = await Promise.all(allFetches);
-
-    // Merge results: paid receipts take priority, then open schedules
-    // results alternates: [receipts0, openSchedules0, receipts1, openSchedules1, ...]
-    const mergedPaid = new Map<string, string>(); // scheduleId -> paymentDate
-    const mergedOpen = new Map<string, { isPaid: boolean; dueDate: string | null; paidDate: string | null }>();
-
-    for (let i = 0; i < results.length; i += 2) {
-      const receipts = results[i] as Map<string, string>;
-      const open = results[i + 1] as Map<string, { isPaid: boolean; dueDate: string | null; paidDate: string | null }>;
-
-      for (const [sid, date] of receipts) {
-        if (!mergedPaid.has(sid)) mergedPaid.set(sid, date);
-      }
-
-      for (const [sid, data] of open) {
+    // Merge all open maps into one
+    const mergedOpen = new Map<string, { dueDate: string | null }>();
+    for (const openMap of openMaps) {
+      for (const [sid, data] of openMap) {
         if (!mergedOpen.has(sid)) mergedOpen.set(sid, data);
-        if (data.isPaid && !mergedPaid.has(sid)) {
-          mergedPaid.set(sid, data.paidDate || new Date().toISOString().split('T')[0]);
-        }
       }
     }
 
-    console.log(`mergedPaid: ${mergedPaid.size}, mergedOpen: ${mergedOpen.size}`);
+    console.log(`Total merged open schedules: ${mergedOpen.size}, boletos to check: ${boletos.length}`);
 
     let updated = 0;
     let unchanged = 0;
@@ -208,22 +181,11 @@ Deno.serve(async (req) => {
     for (const boleto of boletos) {
       const niboId = String(boleto.nibo_schedule_id);
 
-      if (mergedPaid.has(niboId)) {
-        const paymentDate = mergedPaid.get(niboId)!;
-        const { error: updateError } = await supabase
-          .from('boletos')
-          .update({ status: 'pago', data_pagamento: paymentDate })
-          .eq('id', boleto.id);
-
-        if (!updateError) {
-          updated++;
-          console.log(`Boleto ${boleto.id}: PAID on ${paymentDate}`);
-        }
-      } else if (mergedOpen.has(niboId)) {
+      if (mergedOpen.has(niboId)) {
+        // Still open in Nibo — check if due date changed
         const openData = mergedOpen.get(niboId)!;
-        // Not paid — check due date change
         if (openData.dueDate && openData.dueDate !== boleto.vencimento) {
-          console.log(`Due date changed: ${boleto.vencimento} -> ${openData.dueDate}`);
+          console.log(`Due date changed for ${boleto.id}: ${boleto.vencimento} -> ${openData.dueDate}`);
           const { error: updateError } = await supabase
             .from('boletos')
             .update({ vencimento: openData.dueDate })
@@ -232,9 +194,44 @@ Deno.serve(async (req) => {
         }
         unchanged++;
       } else {
-        // Not found in either map — deleted in Nibo or different connection
-        notFound++;
-        console.log(`Boleto ${boleto.id} schedule ${niboId}: not found in Nibo`);
+        // Not in open list — might be paid or deleted. Check individually across all connections.
+        let found = false;
+
+        for (const conn of connections) {
+          const result = await checkSingleSchedule(conn.api_token, niboId);
+          if (!result) continue; // 404 or error on this connection
+
+          found = true;
+
+          if (result.isPaid) {
+            const paymentDate = result.paidDate || new Date().toISOString().split('T')[0];
+            const { error: updateError } = await supabase
+              .from('boletos')
+              .update({ status: 'pago', data_pagamento: paymentDate })
+              .eq('id', boleto.id);
+
+            if (!updateError) {
+              updated++;
+              console.log(`Boleto ${boleto.id} (${niboId}): PAID on ${paymentDate} via ${conn.nome}`);
+            }
+          } else {
+            // Found but not paid — check due date
+            if (result.dueDate && result.dueDate !== boleto.vencimento) {
+              await supabase
+                .from('boletos')
+                .update({ vencimento: result.dueDate })
+                .eq('id', boleto.id);
+              dueDateUpdated++;
+            }
+            unchanged++;
+          }
+          break; // Found in this connection, no need to check others
+        }
+
+        if (!found) {
+          notFound++;
+          console.log(`Boleto ${boleto.id} schedule ${niboId}: not found in any Nibo connection`);
+        }
       }
     }
 
