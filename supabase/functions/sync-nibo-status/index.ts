@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     // Get all unpaid boletos that have a nibo_schedule_id
     const { data: boletos, error: boletosError } = await supabase
       .from('boletos')
-      .select('id, nibo_schedule_id, client_id')
+      .select('id, nibo_schedule_id, vencimento, valor')
       .eq('organization_id', orgId)
       .eq('status', 'não pago')
       .not('nibo_schedule_id', 'is', null);
@@ -91,67 +91,161 @@ Deno.serve(async (req) => {
       );
     }
 
-    let updated = 0;
-    let unchanged = 0;
-    let errors = 0;
+    // Strategy: fetch ALL schedules (open + recently finished) from Nibo API
+    // and build a lookup map by scheduleId
+    const niboStatusMap = new Map<string, { paid: boolean; paymentDate: string | null; newDueDate: string | null }>();
 
-    for (const boleto of boletos) {
-      const niboId = boleto.nibo_schedule_id;
-      let paid = false;
-      let paymentDate: string | null = null;
-      let foundInAnyConn = false;
+    for (const conn of connections) {
+      // Fetch open schedules
+      const openUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$top=1000`;
+      // Fetch finished/paid schedules (last 90 days)
+      const finishedUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/finished?$top=1000`;
 
-      for (const conn of connections) {
-        try {
-          const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/${niboId}`;
-          const resp = await fetch(url, {
-            method: 'GET',
-            headers: { 'ApiToken': conn.api_token, 'Accept': 'application/json' },
-          });
+      const headers: Record<string, string> = {
+        'ApiToken': conn.api_token,
+        'Accept': 'application/json',
+      };
 
-          if (!resp.ok) {
-            await resp.text(); // consume body
-            continue;
-          }
+      const [openResp, finishedResp] = await Promise.allSettled([
+        fetch(openUrl, { method: 'GET', headers }),
+        fetch(finishedUrl, { method: 'GET', headers }),
+      ]);
 
-          const data = await resp.json();
-          foundInAnyConn = true;
-
-          // Nibo statuses: "open", "finished", "cancelled"
-          const status = data?.status || data?.scheduleStatus || '';
-          if (status === 'finished' || status === 'paid') {
-            paid = true;
-            paymentDate = data?.paymentDate?.split('T')[0] || data?.dueDate?.split('T')[0] || new Date().toISOString().split('T')[0];
-          }
-          break; // found in this connection, no need to try others
-        } catch {
-          continue;
+      // Process open schedules (may have changed due date)
+      if (openResp.status === 'fulfilled' && openResp.value.ok) {
+        const data = await openResp.value.json();
+        const items = data?.items || (Array.isArray(data) ? data : []);
+        console.log(`Open schedules from ${conn.nome}:`, items.length);
+        for (const item of items) {
+          const id = String(item.scheduleId || item.id || '');
+          if (!id) continue;
+          const dueDate = item.dueDate?.split('T')[0] || null;
+          niboStatusMap.set(id, { paid: false, paymentDate: null, newDueDate: dueDate });
         }
+      } else if (openResp.status === 'fulfilled') {
+        const errText = await openResp.value.text();
+        console.error(`Nibo open API error for ${conn.nome}:`, openResp.value.status, errText);
       }
 
-      if (!foundInAnyConn) {
-        errors++;
+      // Process finished/paid schedules
+      if (finishedResp.status === 'fulfilled' && finishedResp.value.ok) {
+        const data = await finishedResp.value.json();
+        const items = data?.items || (Array.isArray(data) ? data : []);
+        console.log(`Finished schedules from ${conn.nome}:`, items.length);
+        for (const item of items) {
+          const id = String(item.scheduleId || item.id || '');
+          if (!id) continue;
+          // paymentDate or dueDate as fallback
+          const paymentDate =
+            item.paymentDate?.split('T')[0] ||
+            item.paidDate?.split('T')[0] ||
+            item.dueDate?.split('T')[0] ||
+            new Date().toISOString().split('T')[0];
+          niboStatusMap.set(id, { paid: true, paymentDate, newDueDate: null });
+        }
+      } else if (finishedResp.status === 'fulfilled') {
+        const errText = await finishedResp.value.text();
+        console.error(`Nibo finished API error for ${conn.nome}:`, finishedResp.value.status, errText);
+      }
+    }
+
+    console.log(`Nibo status map size: ${niboStatusMap.size}`);
+    console.log(`Boletos to check: ${boletos.length}`);
+
+    let updated = 0;
+    let unchanged = 0;
+    let notFound = 0;
+    let dueDateUpdated = 0;
+
+    for (const boleto of boletos) {
+      const niboId = String(boleto.nibo_schedule_id);
+      const niboData = niboStatusMap.get(niboId);
+
+      if (!niboData) {
+        // Not found in open or finished — try individual lookup as fallback
+        let paid = false;
+        let paymentDate: string | null = null;
+        let foundIndividual = false;
+
+        for (const conn of connections) {
+          try {
+            const url = `https://api.nibo.com.br/empresas/v1/schedules/credit/${niboId}`;
+            const resp = await fetch(url, {
+              method: 'GET',
+              headers: { 'ApiToken': conn.api_token, 'Accept': 'application/json' },
+            });
+
+            if (!resp.ok) {
+              await resp.text();
+              continue;
+            }
+
+            const data = await resp.json();
+            foundIndividual = true;
+            console.log(`Individual lookup for ${niboId}:`, JSON.stringify(data).substring(0, 300));
+
+            const status = data?.status || data?.scheduleStatus || data?.statusName || '';
+            const statusLower = status.toLowerCase();
+            if (statusLower === 'finished' || statusLower === 'paid' || statusLower === 'pago' || statusLower === 'finalizado') {
+              paid = true;
+              paymentDate =
+                data?.paymentDate?.split('T')[0] ||
+                data?.paidDate?.split('T')[0] ||
+                data?.dueDate?.split('T')[0] ||
+                new Date().toISOString().split('T')[0];
+            }
+            break;
+          } catch {
+            continue;
+          }
+        }
+
+        if (!foundIndividual) {
+          notFound++;
+          continue;
+        }
+
+        if (paid) {
+          const { error: updateError } = await supabase
+            .from('boletos')
+            .update({ status: 'pago', data_pagamento: paymentDate })
+            .eq('id', boleto.id);
+
+          if (!updateError) updated++;
+        } else {
+          unchanged++;
+        }
         continue;
       }
 
-      if (paid) {
+      if (niboData.paid) {
         const { error: updateError } = await supabase
           .from('boletos')
-          .update({ status: 'pago', data_pagamento: paymentDate })
+          .update({ status: 'pago', data_pagamento: niboData.paymentDate })
           .eq('id', boleto.id);
 
         if (!updateError) {
           updated++;
-        } else {
-          errors++;
         }
       } else {
+        // Check if due date changed
+        if (niboData.newDueDate && niboData.newDueDate !== boleto.vencimento) {
+          console.log(`Due date changed for ${niboId}: ${boleto.vencimento} -> ${niboData.newDueDate}`);
+          const { error: updateError } = await supabase
+            .from('boletos')
+            .update({ vencimento: niboData.newDueDate })
+            .eq('id', boleto.id);
+
+          if (!updateError) dueDateUpdated++;
+        }
         unchanged++;
       }
     }
 
+    console.log(`Sync result: updated=${updated}, unchanged=${unchanged}, notFound=${notFound}, dueDateUpdated=${dueDateUpdated}`);
+
     return new Response(
-      JSON.stringify({ updated, unchanged, errors, total: boletos.length }),
+      JSON.stringify({ updated, unchanged, notFound, dueDateUpdated, total: boletos.length }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

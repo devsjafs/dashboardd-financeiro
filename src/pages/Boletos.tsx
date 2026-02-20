@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw } from "lucide-react";
@@ -21,6 +21,15 @@ const Boletos = () => {
   const { importFromNibo, importing, progress, importLog, clearLog } = useNiboImport();
   const { syncStatus, syncing } = useNiboSync();
   const { toast } = useToast();
+  const hasSynced = useRef(false);
+  // Auto-sync on first page load
+  useEffect(() => {
+    if (!hasSynced.current) {
+      hasSynced.current = true;
+      syncStatus(true);
+    }
+  }, []);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
   const getCurrentMonth = () => {
@@ -185,7 +194,7 @@ const Boletos = () => {
             </Select>
             <Button
               variant="outline"
-              onClick={syncStatus}
+              onClick={() => syncStatus(false)}
               disabled={syncing || importing}
               className="gap-2"
             >
