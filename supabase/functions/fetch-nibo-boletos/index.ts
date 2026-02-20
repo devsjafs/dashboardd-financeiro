@@ -98,36 +98,45 @@ Deno.serve(async (req) => {
 
     for (const conn of connections) {
       const apiToken = conn.api_token;
-      const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$orderby=dueDate&$top=500`;
-
-      console.log(`Fetching from Nibo (${conn.nome}):`, niboUrl);
-
       const headers: Record<string, string> = {
         'ApiToken': apiToken,
         'Accept': 'application/json',
       };
 
-      const niboResponse = await fetch(niboUrl, { method: 'GET', headers });
+      // Paginate through all open schedules
+      let skip = 0;
+      const top = 500;
+      let page = 0;
 
-      if (!niboResponse.ok) {
-        const errorText = await niboResponse.text();
-        console.error(`Nibo API error for ${conn.nome}:`, niboResponse.status, errorText);
-        continue; // Skip failed connections, don't abort all
-      }
+      while (page < 20) { // max 10000 items
+        const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit/opened?$orderby=dueDate&$top=${top}&$skip=${skip}`;
+        console.log(`Fetching from Nibo (${conn.nome}) page ${page + 1}:`, niboUrl);
 
-      const niboData = await niboResponse.json();
-      const items = niboData?.items || niboData || [];
-      if (Array.isArray(items)) {
-        if (items.length > 0) {
-          console.log(`Sample item keys for ${conn.nome}:`, JSON.stringify(Object.keys(items[0])));
-          console.log(`Sample stakeholder for ${conn.nome}:`, JSON.stringify(items[0].stakeholder));
+        const niboResponse = await fetch(niboUrl, { method: 'GET', headers });
+
+        if (!niboResponse.ok) {
+          const errorText = await niboResponse.text();
+          console.error(`Nibo API error for ${conn.nome}:`, niboResponse.status, errorText);
+          break;
         }
-        allItems.push(...items.map((item: any) => ({
-          ...item,
-          _connectionName: conn.nome,
-          _connectionApiToken: apiToken,
-        })));
+
+        const niboData = await niboResponse.json();
+        const items = niboData?.items || (Array.isArray(niboData) ? niboData : []);
+
+        if (Array.isArray(items) && items.length > 0) {
+          allItems.push(...items.map((item: any) => ({
+            ...item,
+            _connectionName: conn.nome,
+            _connectionApiToken: apiToken,
+          })));
+        }
+
+        if (!Array.isArray(items) || items.length < top) break; // Last page
+        skip += top;
+        page++;
       }
+
+      console.log(`Total fetched from ${conn.nome}: ${allItems.filter(i => i._connectionName === conn.nome).length}`);
     }
 
     return new Response(
