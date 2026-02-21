@@ -52,5 +52,11 @@ export const useMonthlyBoletoCheck = () => {
     }
   }, [loading, toast]);
 
-  return { check, loading, summary, results };
+  // Build a map of clientId -> status for quick lookup
+  const statusByClientId = results.reduce<Record<string, "ok" | "parcial" | "pendente">>((acc, r) => {
+    acc[r.clientId] = r.status;
+    return acc;
+  }, {});
+
+  return { check, loading, summary, results, statusByClientId };
 };

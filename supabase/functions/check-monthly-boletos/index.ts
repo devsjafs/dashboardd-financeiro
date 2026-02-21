@@ -5,18 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-interface ClientExpected {
-  id: string;
-  nome_fantasia: string;
-  cnpj: string;
-  services: string[];
-  valor_smart: number;
-  valor_apoio: number;
-  valor_contabilidade: number;
-  valor_personalite: number;
-  vencimento: number;
-}
-
 interface BoletoCheck {
   clientId: string;
   nomeFantasia: string;
@@ -70,11 +58,15 @@ Deno.serve(async (req) => {
 
     const orgId = orgMember.organization_id;
 
-    // Parse optional month param, default to current month
     const body = await req.json().catch(() => ({}));
     const now = new Date();
     const competencia = body.competencia || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [year, month] = competencia.split('-').map(Number);
+
+    // Date range for filtering
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
     // 1. Fetch active clients
     const { data: clients, error: clientsError } = await supabase
@@ -95,9 +87,9 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('organization_id', orgId);
 
-    // 3. Fetch all open schedules from Nibo for current month
+    // 3. Fetch ALL open schedules from Nibo (no OData date filter - filter in code)
     const niboItems: any[] = [];
-    
+
     if (connections && connections.length > 0) {
       for (const conn of connections) {
         const headers: Record<string, string> = {
@@ -110,8 +102,8 @@ Deno.serve(async (req) => {
         let page = 0;
 
         while (page < 20) {
-          const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit?$orderby=dueDate&$top=${top}&$skip=${skip}&$filter=dueDate ge '${year}-${String(month).padStart(2, '0')}-01' and dueDate le '${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}'`;
-          console.log(`Checking Nibo (${conn.nome}):`, niboUrl);
+          const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit?$orderby=dueDate&$top=${top}&$skip=${skip}`;
+          console.log(`Checking Nibo (${conn.nome}) page ${page + 1}:`, niboUrl);
 
           const niboResponse = await fetch(niboUrl, { method: 'GET', headers });
 
@@ -135,17 +127,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Total Nibo items for ${competencia}: ${niboItems.length}`);
+    // 4. Filter Nibo items by date range (in code instead of OData)
+    const filteredNiboItems = niboItems.filter((item: any) => {
+      const dueDate = (item.dueDate || '').substring(0, 10); // YYYY-MM-DD
+      return dueDate >= startDate && dueDate <= endDate;
+    });
 
-    // 4. Normalize CNPJs from Nibo items for matching
+    console.log(`Total Nibo items: ${niboItems.length}, filtered for ${competencia}: ${filteredNiboItems.length}`);
+
+    // 5. Build map by CNPJ
     const normalizeCnpj = (doc: string) => doc?.replace(/\D/g, '') || '';
-
-    // Build a map of Nibo items by CNPJ
     const niboByCnpj = new Map<string, any[]>();
-    for (const item of niboItems) {
-      const stakeholders = item.stakeholders || item.stakeholder ? [item.stakeholder] : [];
+
+    for (const item of filteredNiboItems) {
       const allStakeholders = [...(item.stakeholders || []), ...(item.stakeholder ? [item.stakeholder] : [])];
-      
       for (const sh of allStakeholders) {
         if (sh?.document) {
           const cnpj = normalizeCnpj(sh.document);
@@ -155,14 +150,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 5. Check each client
-    const results: BoletoCheck[] = [];
+    // 6. Check each client
     const serviceMap: Record<string, string> = {
       smart: 'valor_smart',
       apoio: 'valor_apoio',
       contabilidade: 'valor_contabilidade',
       personalite: 'valor_personalite',
     };
+
+    const results: BoletoCheck[] = [];
 
     for (const client of (clients || [])) {
       const expectedBoletos: { service: string; valor: number }[] = [];
@@ -180,14 +176,12 @@ Deno.serve(async (req) => {
       const clientCnpj = normalizeCnpj(client.cnpj);
       const niboForClient = niboByCnpj.get(clientCnpj) || [];
 
-      // Match found boletos
       const foundBoletos = niboForClient.map((item: any) => ({
         valor: item.value || item.totalValue || 0,
         niboScheduleId: item.scheduleId || item.id || null,
         dueDate: item.dueDate || '',
       }));
 
-      // Determine status: match expected values to found values (with R$0.05 tolerance)
       let matched = 0;
       const usedIndices = new Set<number>();
 
