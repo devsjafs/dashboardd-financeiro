@@ -31,6 +31,12 @@ interface NiboConnection {
   nome: string;
 }
 
+interface BillingConnection {
+  id: string;
+  provider: string;
+  nome: string;
+}
+
 interface ThomsonReutersConfig {
   domain: string;
   username: string;
@@ -77,6 +83,16 @@ const Settings = () => {
   const [trShowToken, setTrShowToken] = useState(false);
   const [trEditing, setTrEditing] = useState(false);
 
+  // Billing connections state (Safe2Pay, Asaas, Conta Azul)
+  const [billingConnections, setBillingConnections] = useState<BillingConnection[]>([]);
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
+  const [billingDialogProvider, setBillingDialogProvider] = useState<string>("");
+  const [billingEditingId, setBillingEditingId] = useState<string | null>(null);
+  const [billingNome, setBillingNome] = useState("");
+  const [billingApiToken, setBillingApiToken] = useState("");
+  const [billingApiKey, setBillingApiKey] = useState("");
+  const [billingSaving, setBillingSaving] = useState(false);
+
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name || "");
@@ -87,6 +103,7 @@ const Settings = () => {
   useEffect(() => {
     loadConnections();
     loadThomsonReutersConfig();
+    loadBillingConnections();
   }, []);
 
   // ---- Profile ----
@@ -266,6 +283,88 @@ const Settings = () => {
     }
     setTrSaving(false);
   };
+
+  // ---- Billing Connections (Safe2Pay, Asaas, Conta Azul) ----
+  const loadBillingConnections = async () => {
+    const { data } = await (supabase as any).from("billing_connections_safe").select("id, provider, nome").order("created_at");
+    setBillingConnections((data as BillingConnection[]) || []);
+  };
+
+  const getProviderConnections = (provider: string) => billingConnections.filter(c => c.provider === provider);
+
+  const openBillingAddDialog = (provider: string) => {
+    setBillingEditingId(null);
+    setBillingDialogProvider(provider);
+    setBillingNome("");
+    setBillingApiToken("");
+    setBillingApiKey("");
+    setBillingDialogOpen(true);
+  };
+
+  const openBillingEditDialog = (conn: BillingConnection) => {
+    setBillingEditingId(conn.id);
+    setBillingDialogProvider(conn.provider);
+    setBillingNome(conn.nome);
+    setBillingApiToken("");
+    setBillingApiKey("");
+    setBillingDialogOpen(true);
+  };
+
+  const handleBillingSave = async () => {
+    if (!billingNome.trim() || !billingApiToken.trim()) {
+      toast({ title: "Erro", description: "Nome e API Token são obrigatórios.", variant: "destructive" });
+      return;
+    }
+    setBillingSaving(true);
+    try {
+      if (billingEditingId) {
+        await supabase.from("billing_connections").update({
+          nome: billingNome, api_token: billingApiToken, api_key: billingApiKey,
+        }).eq("id", billingEditingId);
+      } else {
+        await supabase.from("billing_connections").insert({
+          provider: billingDialogProvider, nome: billingNome, api_token: billingApiToken,
+          api_key: billingApiKey, organization_id: organizationId,
+        });
+      }
+      toast({ title: "Sucesso", description: billingEditingId ? "Conexão atualizada." : "Conexão adicionada." });
+      setBillingDialogOpen(false);
+      loadBillingConnections();
+    } catch {
+      toast({ title: "Erro", description: "Erro ao salvar conexão.", variant: "destructive" });
+    }
+    setBillingSaving(false);
+  };
+
+  const handleBillingDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja remover esta conexão?")) return;
+    const { error } = await supabase.from("billing_connections").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível remover.", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Conexão removida." });
+    }
+    loadBillingConnections();
+  };
+
+  const providerLabels: Record<string, string> = {
+    safe2pay: "Safe2Pay",
+    asaas: "Asaas",
+    contaazul: "Conta Azul",
+  };
+
+  const providerDescriptions: Record<string, string> = {
+    safe2pay: "Gerencie suas conexões com a API do Safe2Pay.",
+    asaas: "Gerencie suas conexões com a API do Asaas.",
+    contaazul: "Gerencie suas conexões com a API do Conta Azul.",
+  };
+
+  const providerCredentialFields: Record<string, { tokenLabel: string; tokenPlaceholder: string; keyLabel: string; keyPlaceholder: string }> = {
+    safe2pay: { tokenLabel: "API Token", tokenPlaceholder: "Cole o API Token do Safe2Pay", keyLabel: "Secret Key (opcional)", keyPlaceholder: "Cole a Secret Key" },
+    asaas: { tokenLabel: "API Key", tokenPlaceholder: "Cole a API Key do Asaas", keyLabel: "Wallet ID (opcional)", keyPlaceholder: "Cole o Wallet ID" },
+    contaazul: { tokenLabel: "Client ID", tokenPlaceholder: "Cole o Client ID do Conta Azul", keyLabel: "Client Secret", keyPlaceholder: "Cole o Client Secret" },
+  };
+
 
   const initial = profile?.display_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "?";
 
@@ -739,83 +838,82 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          {/* Safe2Pay */}
-          <Card className={activeBillingProvider === "safe2pay" ? "ring-2 ring-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-                  <Plug className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    Safe2Pay
-                    {activeBillingProvider === "safe2pay" && (
-                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
-                  </CardTitle>
-                  <CardDescription>Integração com a plataforma Safe2Pay.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm text-center py-6">
-                A integração com Safe2Pay estará disponível em breve. Configure suas credenciais para estar preparado.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Asaas */}
-          <Card className={activeBillingProvider === "asaas" ? "ring-2 ring-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-                  <Plug className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    Asaas
-                    {activeBillingProvider === "asaas" && (
-                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
-                  </CardTitle>
-                  <CardDescription>Integração com a plataforma Asaas.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm text-center py-6">
-                A integração com Asaas estará disponível em breve. Configure suas credenciais para estar preparado.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Conta Azul */}
-          <Card className={activeBillingProvider === "contaazul" ? "ring-2 ring-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-                  <Plug className="h-5 w-5 text-foreground" />
-                </div>
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    Conta Azul
-                    {activeBillingProvider === "contaazul" && (
-                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
-                  </CardTitle>
-                  <CardDescription>Integração com a plataforma Conta Azul.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm text-center py-6">
-                A integração com Conta Azul estará disponível em breve. Configure suas credenciais para estar preparado.
-              </p>
-            </CardContent>
-          </Card>
+          {/* Provider cards for Safe2Pay, Asaas, Conta Azul */}
+          {(["safe2pay", "asaas", "contaazul"] as const).map((providerId) => {
+            const conns = getProviderConnections(providerId);
+            const fields = providerCredentialFields[providerId];
+            return (
+              <Card key={providerId} className={activeBillingProvider === providerId ? "ring-2 ring-primary" : ""}>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
+                        <Plug className="h-5 w-5 text-foreground" />
+                      </div>
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {providerLabels[providerId]}
+                          {activeBillingProvider === providerId && (
+                            <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
+                          )}
+                          {conns.length > 0 ? (
+                            <Badge className="bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> {conns.length} conexão(ões)
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="gap-1">
+                              <XCircle className="h-3 w-3" /> Sem conexões
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <CardDescription>{providerDescriptions[providerId]}</CardDescription>
+                      </div>
+                    </div>
+                    <Button onClick={() => openBillingAddDialog(providerId)} size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" /> Adicionar
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {conns.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      Nenhuma conexão cadastrada. Clique em "Adicionar" para começar.
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>{fields.tokenLabel}</TableHead>
+                          <TableHead className="w-[100px]">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {conns.map((conn) => (
+                          <TableRow key={conn.id}>
+                            <TableCell className="font-medium">{conn.nome}</TableCell>
+                            <TableCell>
+                              <span className="font-mono text-sm text-muted-foreground">••••••••••••</span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openBillingEditDialog(conn)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleBillingDelete(conn.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </TabsContent>
       </Tabs>
 
@@ -872,7 +970,7 @@ const Settings = () => {
         </DialogContent>
       </Dialog>
 
-
+      {/* Nibo Connection Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -897,6 +995,46 @@ const Settings = () => {
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               <Save className="h-4 w-4" />
               {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Billing Connection Dialog (Safe2Pay, Asaas, Conta Azul) */}
+      <Dialog open={billingDialogOpen} onOpenChange={setBillingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {billingEditingId ? "Editar Conexão" : `Nova Conexão ${providerLabels[billingDialogProvider] || ""}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome da Conexão</Label>
+              <Input value={billingNome} onChange={(e) => setBillingNome(e.target.value)} placeholder="Ex: Empresa Principal" />
+            </div>
+            <div className="space-y-2">
+              <Label>{providerCredentialFields[billingDialogProvider]?.tokenLabel || "API Token"}</Label>
+              <Input
+                value={billingApiToken}
+                onChange={(e) => setBillingApiToken(e.target.value)}
+                placeholder={providerCredentialFields[billingDialogProvider]?.tokenPlaceholder || "Cole o token"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{providerCredentialFields[billingDialogProvider]?.keyLabel || "API Key (opcional)"}</Label>
+              <Input
+                value={billingApiKey}
+                onChange={(e) => setBillingApiKey(e.target.value)}
+                placeholder={providerCredentialFields[billingDialogProvider]?.keyPlaceholder || "Cole a key"}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBillingDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleBillingSave} disabled={billingSaving} className="gap-2">
+              <Save className="h-4 w-4" />
+              {billingSaving ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
