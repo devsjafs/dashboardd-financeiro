@@ -339,7 +339,7 @@ const Index = () => {
 
           {/* Show ClientsTable for non-Grupos tabs */}
           {activeTab !== "grupos" && (
-            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} niboStatus={niboCheck.statusByClientId} />
+            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} niboStatus={niboCheck.statusByClientId} niboResults={niboCheck.results} />
           )}
         </TabsContent>
       </Tabs>
