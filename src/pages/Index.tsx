@@ -5,6 +5,7 @@ import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { GroupDialog } from "@/components/dashboard/GroupDialog";
 import { useMonthlyBoletoCheck } from "@/hooks/useMonthlyBoletoCheck";
+import { useActiveBillingProvider } from "@/hooks/useActiveBillingProvider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useClients } from "@/hooks/useClients";
 import { exportToXLSX, importFromXLSX, downloadClientTemplate } from "@/utils/exportImport";
 import { ImportDialog } from "@/components/dashboard/ImportDialog";
+import { Badge } from "@/components/ui/badge";
 import {
   Zap,
   Briefcase,
@@ -39,8 +41,9 @@ const Index = () => {
   const { toast } = useToast();
   const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
   const niboCheck = useMonthlyBoletoCheck();
+  const { activeConfig, isImplemented } = useActiveBillingProvider();
 
-  useEffect(() => { niboCheck.check(); }, []);
+  useEffect(() => { if (isImplemented) niboCheck.check(); }, []);
 
   // Apenas clientes ativos (excluindo ex-clientes)
   const activeClients = clients.filter((c) => c.status === "ativo");
@@ -144,8 +147,8 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => niboCheck.check()}
-                  disabled={niboCheck.loading}
+                  onClick={() => isImplemented ? niboCheck.check() : undefined}
+                  disabled={niboCheck.loading || !isImplemented}
                   className="gap-2"
                 >
                   {niboCheck.loading ? (
@@ -153,8 +156,11 @@ const Index = () => {
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  Nibo
-                  {niboCheck.summary && (
+                  {activeConfig.label}
+                  {!isImplemented && (
+                    <Badge variant="secondary" className="text-xs ml-1">Em breve</Badge>
+                  )}
+                  {isImplemented && niboCheck.summary && (
                     <span className="flex items-center gap-1 ml-1">
                       {niboCheck.summary.pendente > 0 && (
                         <span className="flex items-center gap-0.5 text-destructive">
@@ -179,9 +185,11 @@ const Index = () => {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {niboCheck.summary
+                {!isImplemented
+                  ? `Integração com ${activeConfig.label} em breve`
+                  : niboCheck.summary
                   ? `Boletos ${niboCheck.summary.competencia}: ${niboCheck.summary.ok} OK, ${niboCheck.summary.parcial} Parcial, ${niboCheck.summary.pendente} Pendente`
-                  : "Verificar boletos do mês no Nibo"}
+                  : `Verificar boletos do mês no ${activeConfig.label}`}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
