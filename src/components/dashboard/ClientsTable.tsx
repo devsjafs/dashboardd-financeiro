@@ -13,13 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, ArrowUp, ArrowDown, History, CheckCircle2, XCircle, AlertTriangle, Minus } from "lucide-react";
 import { ClientHistoryDialog } from "./ClientHistoryDialog";
+import { NiboStatusDialog } from "./NiboStatusDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { BoletoCheckResult } from "@/hooks/useMonthlyBoletoCheck";
 
 interface ClientsTableProps {
   clients: Client[];
   onEdit: (clientId: string) => void;
   onDelete: (id: string) => void;
   niboStatus?: Record<string, "ok" | "parcial" | "pendente">;
+  niboResults?: BoletoCheckResult[];
 }
 
 const statusColors = {
@@ -63,7 +66,7 @@ const situacaoLabels = {
 type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento" | "nibo";
 type SortDirection = "asc" | "desc";
 
-export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsTableProps) {
+export function ClientsTable({ clients, onEdit, onDelete, niboStatus, niboResults }: ClientsTableProps) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("codigo");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -71,6 +74,8 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsT
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [niboDialogOpen, setNiboDialogOpen] = useState(false);
+  const [niboDialogClient, setNiboDialogClient] = useState<{ name: string; result: BoletoCheckResult | null } | null>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -270,24 +275,33 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsT
                   <TableCell className="text-center">
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipTrigger>
-                          {niboStatus && niboStatus[client.id] === "ok" ? (
-                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
-                          ) : niboStatus && niboStatus[client.id] === "parcial" ? (
-                            <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto" />
-                          ) : niboStatus && niboStatus[client.id] === "pendente" ? (
-                            <XCircle className="h-5 w-5 text-destructive mx-auto" />
-                          ) : (
-                            <Minus className="h-4 w-4 text-muted-foreground mx-auto" />
-                          )}
+                        <TooltipTrigger asChild>
+                          <button
+                            className="cursor-pointer hover:opacity-70 transition-opacity"
+                            onClick={() => {
+                              const r = niboResults?.find(nr => nr.clientId === client.id) || null;
+                              setNiboDialogClient({ name: client.nomeFantasia, result: r });
+                              setNiboDialogOpen(true);
+                            }}
+                          >
+                            {niboStatus && niboStatus[client.id] === "ok" ? (
+                              <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
+                            ) : niboStatus && niboStatus[client.id] === "parcial" ? (
+                              <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto" />
+                            ) : niboStatus && niboStatus[client.id] === "pendente" ? (
+                              <XCircle className="h-5 w-5 text-destructive mx-auto" />
+                            ) : (
+                              <Minus className="h-4 w-4 text-muted-foreground mx-auto" />
+                            )}
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent>
                           {niboStatus && niboStatus[client.id] === "ok"
-                            ? "Boleto emitido no Nibo"
+                            ? "Boleto emitido no Nibo — clique para ver"
                             : niboStatus && niboStatus[client.id] === "parcial"
-                            ? "Boleto parcialmente emitido"
+                            ? "Parcialmente emitido — clique para ver"
                             : niboStatus && niboStatus[client.id] === "pendente"
-                            ? "Boleto pendente no Nibo"
+                            ? "Pendente — clique para ver"
                             : "Sem verificação"}
                         </TooltipContent>
                       </Tooltip>
@@ -412,6 +426,13 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsT
           onOpenChange={setHistoryDialogOpen}
         />
       )}
+
+      <NiboStatusDialog
+        open={niboDialogOpen}
+        onOpenChange={setNiboDialogOpen}
+        clientName={niboDialogClient?.name || ""}
+        result={niboDialogClient?.result || null}
+      />
     </div>
   );
 }
