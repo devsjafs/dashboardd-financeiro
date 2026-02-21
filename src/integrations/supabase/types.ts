@@ -41,6 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_connections: {
+        Row: {
+          api_key: string
+          api_token: string
+          created_at: string
+          extra_config: Json
+          id: string
+          nome: string
+          organization_id: string | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          api_token?: string
+          created_at?: string
+          extra_config?: Json
+          id?: string
+          nome: string
+          organization_id?: string | null
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          api_token?: string
+          created_at?: string
+          extra_config?: Json
+          id?: string
+          nome?: string
+          organization_id?: string | null
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boletos: {
         Row: {
           categoria: string
@@ -661,6 +705,41 @@ export type Database = {
       }
     }
     Views: {
+      billing_connections_safe: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          nome: string | null
+          organization_id: string | null
+          provider: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          provider?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          nome?: string | null
+          organization_id?: string | null
+          provider?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nibo_connections_safe: {
         Row: {
           created_at: string | null
