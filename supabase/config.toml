@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.delete-all-boletos]
 verify_jwt = false
+
+[functions.check-monthly-boletos]
+verify_jwt = false

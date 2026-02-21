@@ -4,6 +4,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { GroupDialog } from "@/components/dashboard/GroupDialog";
+import { MonthlyBoletoCard } from "@/components/dashboard/MonthlyBoletoCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -215,6 +216,9 @@ const Index = () => {
           bgColor="bg-success/10"
         />
       </div>
+
+      {/* Monthly Boleto Check */}
+      <MonthlyBoletoCard />
 
       {/* Tabs for filtering by service */}
       <Tabs value={activeTab} onValueChange={(value) => {
