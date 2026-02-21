@@ -30,24 +30,23 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+    // Authenticate user
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const userId = claimsData.claims.sub;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get org
     const { data: orgMember } = await supabase
       .from('organization_members')
       .select('organization_id')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .limit(1)
       .maybeSingle();
 
@@ -63,12 +62,11 @@ Deno.serve(async (req) => {
     const competencia = body.competencia || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [year, month] = competencia.split('-').map(Number);
 
-    // Date range for filtering
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
-    // 1. Fetch active clients
+    // Fetch active clients
     const { data: clients, error: clientsError } = await supabase
       .from('clients')
       .select('id, nome_fantasia, cnpj, services, valor_smart, valor_apoio, valor_contabilidade, valor_personalite, vencimento')
@@ -76,18 +74,17 @@ Deno.serve(async (req) => {
       .eq('status', 'ativo');
 
     if (clientsError) {
-      console.error('Error fetching clients:', clientsError);
       return new Response(JSON.stringify({ error: 'Erro ao buscar clientes.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 2. Fetch Nibo connections
+    // Fetch Nibo connections
     const { data: connections } = await supabase
       .from('nibo_connections')
       .select('*')
       .eq('organization_id', orgId);
 
-    // 3. Fetch ALL open schedules from Nibo (no OData date filter - filter in code)
+    // Fetch ONLY schedules for the target month using OData date filter
     const niboItems: any[] = [];
 
     if (connections && connections.length > 0) {
@@ -101,9 +98,11 @@ Deno.serve(async (req) => {
         const top = 500;
         let page = 0;
 
-        while (page < 20) {
-          const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit?$orderby=dueDate&$top=${top}&$skip=${skip}`;
-          console.log(`Checking Nibo (${conn.nome}) page ${page + 1}:`, niboUrl);
+        while (page < 10) {
+          // Use OData filter to only get schedules within the month
+          const filter = encodeURIComponent(`dueDate ge ${startDate} and dueDate le ${endDate}`);
+          const niboUrl = `https://api.nibo.com.br/empresas/v1/schedules/credit?$filter=${filter}&$orderby=dueDate&$top=${top}&$skip=${skip}`;
+          console.log(`Nibo (${conn.nome}) page ${page + 1}: fetching ${startDate} to ${endDate}`);
 
           const niboResponse = await fetch(niboUrl, { method: 'GET', headers });
 
@@ -127,30 +126,34 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Filter Nibo items by date range (in code instead of OData)
-    const filteredNiboItems = niboItems.filter((item: any) => {
-      const dueDate = (item.dueDate || '').substring(0, 10); // YYYY-MM-DD
-      return dueDate >= startDate && dueDate <= endDate;
-    });
+    console.log(`Total Nibo items for ${competencia}: ${niboItems.length}`);
 
-    console.log(`Total Nibo items: ${niboItems.length}, filtered for ${competencia}: ${filteredNiboItems.length}`);
+    // Debug: log first 3 items structure to understand field names
+    for (let i = 0; i < Math.min(3, niboItems.length); i++) {
+      const item = niboItems[i];
+      console.log(`Nibo item ${i}: keys=${Object.keys(item).join(',')}, stakeholders=${JSON.stringify(item.stakeholders)}, stakeholder=${JSON.stringify(item.stakeholder)}, customerName=${item.customerName}, customer=${JSON.stringify(item.customer)}`);
+    }
 
-    // 5. Build map by CNPJ
+    // Build map by CNPJ
     const normalizeCnpj = (doc: string) => doc?.replace(/\D/g, '') || '';
     const niboByCnpj = new Map<string, any[]>();
 
-    for (const item of filteredNiboItems) {
+    for (const item of niboItems) {
       const allStakeholders = [...(item.stakeholders || []), ...(item.stakeholder ? [item.stakeholder] : [])];
       for (const sh of allStakeholders) {
-        if (sh?.document) {
-          const cnpj = normalizeCnpj(sh.document);
+        const doc = sh?.cpfCnpj || sh?.document || '';
+        if (doc) {
+          const cnpj = normalizeCnpj(doc);
           if (!niboByCnpj.has(cnpj)) niboByCnpj.set(cnpj, []);
           niboByCnpj.get(cnpj)!.push(item);
         }
       }
     }
 
-    // 6. Check each client
+    // Log some debug info
+    console.log(`Unique CNPJs found in Nibo: ${niboByCnpj.size}`);
+
+    // Check each client
     const serviceMap: Record<string, string> = {
       smart: 'valor_smart',
       apoio: 'valor_apoio',
@@ -181,6 +184,11 @@ Deno.serve(async (req) => {
         niboScheduleId: item.scheduleId || item.id || null,
         dueDate: item.dueDate || '',
       }));
+
+      // Log first few mismatches for debugging
+      if (niboForClient.length === 0 && results.length < 5) {
+        console.log(`No Nibo match for ${client.nome_fantasia} (CNPJ: ${clientCnpj})`);
+      }
 
       let matched = 0;
       const usedIndices = new Set<number>();
