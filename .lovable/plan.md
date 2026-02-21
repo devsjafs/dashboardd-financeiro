@@ -1,59 +1,87 @@
 
-## Sincronização de Status dos Boletos com o Nibo
+
+## Hub de Integracoes Multi-API
 
 ### Objetivo
-Criar um botão "Sincronizar Status" que consulta o Nibo pelo ID de cada boleto importado e atualiza automaticamente quais foram pagos.
+Transformar a aba "Integracoes" em Configuracoes num hub onde o admin seleciona qual plataforma de faturamento usar (Nibo, Safe2Pay, Asaas, Conta Azul). Ao selecionar, todos os botoes do Dashboard e da pagina de Boletos se adaptam automaticamente.
 
-### O Problema Atual
-O sistema importa boletos do Nibo, mas não guarda o ID único do Nibo (`scheduleId`). Sem esse ID, não há como perguntar ao Nibo "esse boleto foi pago?" — só dá para deduzir pelo CNPJ + valor + data, o que é menos confiável.
+### Como vai funcionar
 
-### Solução: 3 Etapas
+1. **Seletor de Provedor Ativo**: Na aba Integracoes, acima dos cards de cada provedor, tera um seletor destacado mostrando qual plataforma esta ativa. Apenas uma pode estar ativa por vez.
 
-**Etapa 1 — Banco de Dados: Adicionar coluna `nibo_schedule_id`**
-- Criar uma migration que adiciona a coluna `nibo_schedule_id TEXT` na tabela `boletos`
-- Ela ficará nula para boletos já existentes ou criados manualmente
+2. **Cards por Provedor**: Cada provedor (Nibo, Safe2Pay, Asaas, Conta Azul) tera seu proprio card com formulario de credenciais especifico. O card do provedor ativo tera destaque visual.
 
-**Etapa 2 — Atualizar o Import: Salvar o ID do Nibo**
-- Atualizar `supabase/functions/fetch-nibo-boletos/index.ts` para retornar o campo `scheduleId` (ou equivalente) de cada item do Nibo
-- Atualizar `src/hooks/useNiboImport.ts` para gravar esse ID no campo `nibo_schedule_id` ao inserir no banco
+3. **Botoes Dinamicos**: Os botoes "Sincronizar Nibo", "Importar Nibo" no Dashboard e em Boletos mudam o texto e comportamento conforme o provedor selecionado (ex: "Sincronizar Safe2Pay", "Importar Asaas").
 
-**Etapa 3 — Nova Função de Sincronização**
-- Criar nova edge function `sync-nibo-status` que:
-  1. Busca todos os boletos locais com `nibo_schedule_id != null` e `status = "não pago"`
-  2. Para cada um, consulta a API do Nibo pelo endpoint de schedule individual (`/schedules/{id}`) para ver o status atual
-  3. Se o Nibo indicar que foi pago, atualiza `status = "pago"` e `data_pagamento` no banco
-  4. Retorna um resumo: X atualizados, Y sem mudança
-- Adicionar hook `useNiboSync` no frontend
-- Adicionar botão "Sincronizar Status" na página de Boletos ao lado do botão "Importar Nibo"
+4. **Verificacao Mensal Adaptada**: O botao Nibo no Dashboard e a coluna de status na tabela de clientes tambem se adaptam ao provedor ativo.
 
-### Technical Details
+### Etapas de Implementacao
+
+**Etapa 1 - Tabela de Conexoes Generica e Setting do Provedor Ativo**
+- Salvar o provedor ativo na tabela `settings` com a chave `active_billing_provider` (valores: `nibo`, `safe2pay`, `asaas`, `contaazul`)
+- Criar tabelas de conexoes para cada novo provedor (safe2pay_connections, asaas_connections, contaazul_connections) com campos especificos de cada API, ou reutilizar um modelo generico
+
+**Etapa 2 - Hook useActiveBillingProvider**
+- Novo hook que le/escreve o `active_billing_provider` da tabela `settings`
+- Fornece o provedor ativo para todos os componentes via contexto ou query
+
+**Etapa 3 - Refatorar Pagina de Configuracoes**
+- Adicionar seletor de provedor ativo no topo da aba Integracoes
+- Adicionar cards de configuracao para Safe2Pay, Asaas e Conta Azul (formularios de credenciais)
+- Manter o card existente do Nibo e Thomson Reuters
+
+**Etapa 4 - Adaptar Dashboard (Index.tsx)**
+- O botao "Nibo" muda o label para o nome do provedor ativo
+- A verificacao mensal so roda se o provedor ativo tiver edge function implementada (inicialmente so Nibo)
+- Para provedores sem implementacao ainda, mostrar badge "Em breve"
+
+**Etapa 5 - Adaptar Pagina de Boletos**
+- Botoes "Sincronizar Nibo" e "Importar Nibo" mudam label conforme provedor
+- Desabilitar funcoes de import/sync para provedores ainda nao implementados, com tooltip "Em breve"
+
+**Etapa 6 - Edge Functions por Provedor (futuro)**
+- Inicialmente, apenas o Nibo tera edge functions funcionais
+- Os demais provedores ficam com o formulario de credenciais pronto, mas com as funcoes de sync/import marcadas como "Em breve"
+- Conforme cada API for implementada, basta criar a edge function e remover o "Em breve"
+
+### Detalhes Tecnicos
 
 **Migration SQL:**
 ```sql
-ALTER TABLE public.boletos ADD COLUMN nibo_schedule_id TEXT;
-CREATE INDEX idx_boletos_nibo_schedule_id ON public.boletos(nibo_schedule_id);
+-- Nenhuma migration necessaria inicialmente
+-- O provedor ativo sera salvo na tabela settings existente
+-- key = 'active_billing_provider', value = 'nibo' | 'safe2pay' | 'asaas' | 'contaazul'
+
+-- Tabelas de conexoes para novos provedores (quando implementados):
+-- CREATE TABLE public.safe2pay_connections (...)
+-- CREATE TABLE public.asaas_connections (...)
+-- CREATE TABLE public.contaazul_connections (...)
 ```
 
-**Fluxo do botão Sincronizar:**
+**Arquivos Novos:**
+- `src/hooks/useActiveBillingProvider.ts` - hook para ler/escrever provedor ativo
+
+**Arquivos Alterados:**
+- `src/pages/Settings.tsx` - seletor de provedor + cards dos novos provedores
+- `src/pages/Index.tsx` - label dinamico no botao de verificacao
+- `src/pages/Boletos.tsx` - labels dinamicos nos botoes de sync/import
+- `src/components/dashboard/ClientsTable.tsx` - label dinamico na coluna de status
+
+**Fluxo do Seletor:**
 ```text
-[Usuário clica "Sincronizar"]
-        ↓
-[Edge Function: busca boletos locais "não pago" com nibo_schedule_id]
-        ↓
-[Para cada boleto: GET /schedules/credit/{id} no Nibo]
-        ↓
-[Se status = pago → UPDATE boletos SET status='pago', data_pagamento=...]
-        ↓
-[Retorna: X boletos atualizados para pago]
+[Admin abre Configuracoes > Integracoes]
+        |
+[Ve seletor com opcoes: Nibo, Safe2Pay, Asaas, Conta Azul]
+        |
+[Seleciona Safe2Pay] --> salva em settings: active_billing_provider = 'safe2pay'
+        |
+[Dashboard e Boletos mostram "Safe2Pay" nos botoes]
+[Se Safe2Pay ainda nao implementado: botoes ficam com badge "Em breve"]
 ```
 
-### Arquivos Alterados
-- `supabase/migrations/` — nova migration com a coluna `nibo_schedule_id`
-- `supabase/functions/fetch-nibo-boletos/index.ts` — incluir `scheduleId` na resposta
-- `src/hooks/useNiboImport.ts` — salvar `nibo_schedule_id` no insert
-- `supabase/functions/sync-nibo-status/index.ts` — nova edge function de sync
-- `src/hooks/useNiboSync.ts` — novo hook para chamar a edge function
-- `src/pages/Boletos.tsx` — adicionar botão "Sincronizar Status"
+### Observacoes
+- Apenas o Nibo tera funcionalidade completa inicialmente
+- Os outros provedores terao o formulario de credenciais pronto para configuracao
+- Conforme cada API for implementada, a funcionalidade sera "ligada" automaticamente
+- Thomson Reuters permanece separado pois nao e plataforma de faturamento
 
-### Observação Importante
-Boletos criados manualmente ou importados via XLSX não terão `nibo_schedule_id`, portanto o sync só funcionará para os boletos importados via Nibo. Isso é exibido claramente no resultado da sincronização.
