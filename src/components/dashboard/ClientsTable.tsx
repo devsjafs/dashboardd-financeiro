@@ -11,14 +11,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, ArrowUp, ArrowDown, History, FileText } from "lucide-react";
+import { Search, Pencil, Trash2, Zap, Briefcase, Calculator, Crown, ArrowUpDown, ArrowUp, ArrowDown, History, CheckCircle2, XCircle, AlertTriangle, Minus } from "lucide-react";
 import { ClientHistoryDialog } from "./ClientHistoryDialog";
-import { ClientNotesDialog } from "./ClientNotesDialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ClientsTableProps {
   clients: Client[];
   onEdit: (clientId: string) => void;
   onDelete: (id: string) => void;
+  niboStatus?: Record<string, "ok" | "parcial" | "pendente">;
 }
 
 const statusColors = {
@@ -62,12 +63,11 @@ const situacaoLabels = {
 type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento";
 type SortDirection = "asc" | "desc";
 
-export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
+export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsTableProps) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("codigo");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -200,6 +200,7 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
               <TableHead className="font-semibold">Serviços</TableHead>
               <TableHead className="font-semibold">Situação</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold text-center">Nibo</TableHead>
               <TableHead className="font-semibold text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -249,6 +250,32 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                       {client.status}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          {niboStatus && niboStatus[client.id] === "ok" ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
+                          ) : niboStatus && niboStatus[client.id] === "parcial" ? (
+                            <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto" />
+                          ) : niboStatus && niboStatus[client.id] === "pendente" ? (
+                            <XCircle className="h-5 w-5 text-destructive mx-auto" />
+                          ) : (
+                            <Minus className="h-4 w-4 text-muted-foreground mx-auto" />
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {niboStatus && niboStatus[client.id] === "ok"
+                            ? "Boleto emitido no Nibo"
+                            : niboStatus && niboStatus[client.id] === "parcial"
+                            ? "Boleto parcialmente emitido"
+                            : niboStatus && niboStatus[client.id] === "pendente"
+                            ? "Boleto pendente no Nibo"
+                            : "Sem verificação"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
@@ -258,22 +285,10 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
                           setSelectedClient(client);
                           setHistoryDialogOpen(true);
                         }}
-                        className="hover:bg-blue-500/10 hover:text-blue-500"
+                        className="hover:bg-primary/10 hover:text-primary"
                         title="Histórico"
                       >
                         <History className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedClient(client);
-                          setNotesDialogOpen(true);
-                        }}
-                        className="hover:bg-amber-500/10 hover:text-amber-500"
-                        title="Anotações"
-                      >
-                        <FileText className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -373,20 +388,12 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
       )}
 
       {selectedClient && (
-        <>
-          <ClientHistoryDialog
-            clientId={selectedClient.id}
-            clientName={selectedClient.nomeFantasia}
-            open={historyDialogOpen}
-            onOpenChange={setHistoryDialogOpen}
-          />
-          <ClientNotesDialog
-            clientId={selectedClient.id}
-            clientName={selectedClient.nomeFantasia}
-            open={notesDialogOpen}
-            onOpenChange={setNotesDialogOpen}
-          />
-        </>
+        <ClientHistoryDialog
+          clientId={selectedClient.id}
+          clientName={selectedClient.nomeFantasia}
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+        />
       )}
     </div>
   );

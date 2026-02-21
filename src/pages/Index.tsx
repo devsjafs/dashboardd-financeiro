@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ServiceType } from "@/types/client";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { GroupDialog } from "@/components/dashboard/GroupDialog";
 import { MonthlyBoletoCard } from "@/components/dashboard/MonthlyBoletoCard";
+import { useMonthlyBoletoCheck } from "@/hooks/useMonthlyBoletoCheck";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,9 @@ const Index = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { toast } = useToast();
   const { clients, isLoading, createClient, updateClient, deleteClient } = useClients();
+  const niboCheck = useMonthlyBoletoCheck();
+
+  useEffect(() => { niboCheck.check(); }, []);
 
   // Apenas clientes ativos (excluindo ex-clientes)
   const activeClients = clients.filter((c) => c.status === "ativo");
@@ -218,7 +222,7 @@ const Index = () => {
       </div>
 
       {/* Monthly Boleto Check */}
-      <MonthlyBoletoCard />
+      <MonthlyBoletoCard summary={niboCheck.summary} loading={niboCheck.loading} onCheck={() => niboCheck.check()} />
 
       {/* Tabs for filtering by service */}
       <Tabs value={activeTab} onValueChange={(value) => {
@@ -287,7 +291,7 @@ const Index = () => {
 
           {/* Show ClientsTable for non-Grupos tabs */}
           {activeTab !== "grupos" && (
-            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} />
+            <ClientsTable clients={filteredClients} onEdit={handleEdit} onDelete={handleDelete} niboStatus={niboCheck.statusByClientId} />
           )}
         </TabsContent>
       </Tabs>
