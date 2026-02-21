@@ -4,9 +4,9 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { ClientsTable } from "@/components/dashboard/ClientsTable";
 import { ClientDialog } from "@/components/dashboard/ClientDialog";
 import { GroupDialog } from "@/components/dashboard/GroupDialog";
-import { MonthlyBoletoCard } from "@/components/dashboard/MonthlyBoletoCard";
 import { useMonthlyBoletoCheck } from "@/hooks/useMonthlyBoletoCheck";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useClients } from "@/hooks/useClients";
@@ -23,6 +23,10 @@ import {
   Upload,
   Loader2,
   Users,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 
 const Index = () => {
@@ -134,6 +138,53 @@ const Index = () => {
           </p>
         </div>
         <div className="flex gap-3">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => niboCheck.check()}
+                  disabled={niboCheck.loading}
+                  className="gap-2"
+                >
+                  {niboCheck.loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Nibo
+                  {niboCheck.summary && (
+                    <span className="flex items-center gap-1 ml-1">
+                      {niboCheck.summary.pendente > 0 && (
+                        <span className="flex items-center gap-0.5 text-destructive">
+                          <XCircle className="h-3.5 w-3.5" />
+                          {niboCheck.summary.pendente}
+                        </span>
+                      )}
+                      {niboCheck.summary.parcial > 0 && (
+                        <span className="flex items-center gap-0.5 text-amber-500">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          {niboCheck.summary.parcial}
+                        </span>
+                      )}
+                      {niboCheck.summary.ok > 0 && (
+                        <span className="flex items-center gap-0.5 text-emerald-500">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {niboCheck.summary.ok}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {niboCheck.summary
+                  ? `Boletos ${niboCheck.summary.competencia}: ${niboCheck.summary.ok} OK, ${niboCheck.summary.parcial} Parcial, ${niboCheck.summary.pendente} Pendente`
+                  : "Verificar boletos do mês no Nibo"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button
             variant="outline"
             onClick={() => setImportDialogOpen(true)}
@@ -220,9 +271,6 @@ const Index = () => {
           bgColor="bg-success/10"
         />
       </div>
-
-      {/* Monthly Boleto Check */}
-      <MonthlyBoletoCard summary={niboCheck.summary} loading={niboCheck.loading} onCheck={() => niboCheck.check()} />
 
       {/* Tabs for filtering by service */}
       <Tabs value={activeTab} onValueChange={(value) => {

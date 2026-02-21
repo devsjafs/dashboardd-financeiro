@@ -60,7 +60,7 @@ const situacaoLabels = {
   'anual': 'Anual'
 };
 
-type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento";
+type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento" | "nibo";
 type SortDirection = "asc" | "desc";
 
 export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsTableProps) {
@@ -107,6 +107,15 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsT
         case "vencimento":
           comparison = a.vencimento - b.vencimento;
           break;
+        case "nibo": {
+          const order = { ok: 0, parcial: 1, pendente: 2 };
+          const statusA = niboStatus?.[a.id];
+          const statusB = niboStatus?.[b.id];
+          const valA = statusA ? order[statusA] : 3;
+          const valB = statusB ? order[statusB] : 3;
+          comparison = valA - valB;
+          break;
+        }
       }
       
       return sortDirection === "asc" ? comparison : -comparison;
@@ -200,7 +209,15 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus }: ClientsT
               <TableHead className="font-semibold">Serviços</TableHead>
               <TableHead className="font-semibold">Situação</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold text-center">Nibo</TableHead>
+              <TableHead 
+                className="font-semibold text-center cursor-pointer hover:bg-muted/80 transition-colors"
+                onClick={() => handleSort("nibo")}
+              >
+                <div className="flex items-center justify-center">
+                  Nibo
+                  {getSortIcon("nibo")}
+                </div>
+              </TableHead>
               <TableHead className="font-semibold text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
