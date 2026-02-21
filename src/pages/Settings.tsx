@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useActiveBillingProvider, BILLING_PROVIDERS, BillingProvider } from "@/hooks/useActiveBillingProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,7 @@ const Settings = () => {
   const { toast } = useToast();
   const { user, profile, refreshProfile, organizationId, userRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { activeProvider: activeBillingProvider, setProvider: handleSetProvider, providers: billingProviders } = useActiveBillingProvider();
   const { organization, members, invites, inviteMember, cancelInvite, updateMemberRole, removeMember } = useOrganization();
 
   // Invite state
@@ -528,6 +530,43 @@ const Settings = () => {
 
         {/* ===== INTEGRAÇÕES ===== */}
         <TabsContent value="integracoes" className="space-y-6">
+          {/* Seletor de Provedor Ativo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Provedor de Faturamento Ativo</CardTitle>
+              <CardDescription>Selecione qual plataforma de faturamento será usada no Dashboard e Boletos</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {billingProviders.map((provider) => (
+                  <button
+                    key={provider.id}
+                    onClick={() => handleSetProvider(provider.id)}
+                    className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                      activeBillingProvider === provider.id
+                        ? "border-primary bg-primary/5 shadow-md"
+                        : "border-border hover:border-primary/40 bg-card"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold text-sm">{provider.label}</span>
+                      {activeBillingProvider === provider.id && (
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                    {provider.implemented ? (
+                      <Badge className="bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 text-xs">
+                        Disponível
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">Em breve</Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Thomson Reuters */}
           <Card>
             <CardHeader>
@@ -628,7 +667,7 @@ const Settings = () => {
           </Card>
 
           {/* Nibo */}
-          <Card>
+          <Card className={activeBillingProvider === "nibo" ? "ring-2 ring-primary" : ""}>
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -638,6 +677,9 @@ const Settings = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       Nibo
+                      {activeBillingProvider === "nibo" && (
+                        <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
+                      )}
                       {connections.length > 0 ? (
                         <Badge className="bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] hover:bg-[hsl(var(--success))]/90 gap-1">
                           <CheckCircle2 className="h-3 w-3" /> {connections.length} conexão(ões)
@@ -694,6 +736,84 @@ const Settings = () => {
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Safe2Pay */}
+          <Card className={activeBillingProvider === "safe2pay" ? "ring-2 ring-primary" : ""}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
+                  <Plug className="h-5 w-5 text-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Safe2Pay
+                    {activeBillingProvider === "safe2pay" && (
+                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
+                  </CardTitle>
+                  <CardDescription>Integração com a plataforma Safe2Pay.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm text-center py-6">
+                A integração com Safe2Pay estará disponível em breve. Configure suas credenciais para estar preparado.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Asaas */}
+          <Card className={activeBillingProvider === "asaas" ? "ring-2 ring-primary" : ""}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
+                  <Plug className="h-5 w-5 text-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Asaas
+                    {activeBillingProvider === "asaas" && (
+                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
+                  </CardTitle>
+                  <CardDescription>Integração com a plataforma Asaas.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm text-center py-6">
+                A integração com Asaas estará disponível em breve. Configure suas credenciais para estar preparado.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Conta Azul */}
+          <Card className={activeBillingProvider === "contaazul" ? "ring-2 ring-primary" : ""}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
+                  <Plug className="h-5 w-5 text-foreground" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Conta Azul
+                    {activeBillingProvider === "contaazul" && (
+                      <Badge variant="outline" className="text-primary border-primary text-xs">Ativo</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">Em breve</Badge>
+                  </CardTitle>
+                  <CardDescription>Integração com a plataforma Conta Azul.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm text-center py-6">
+                A integração com Conta Azul estará disponível em breve. Configure suas credenciais para estar preparado.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>

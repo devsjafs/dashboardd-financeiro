@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw, MoreHorizontal, Trash2 } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
 import { useNiboImport } from "@/hooks/useNiboImport";
 import { useNiboSync } from "@/hooks/useNiboSync";
 import { useDeleteAllBoletos } from "@/hooks/useDeleteAllBoletos";
+import { useActiveBillingProvider } from "@/hooks/useActiveBillingProvider";
 import { useAuth } from "@/contexts/AuthContext";
 import { BoletoDialog } from "@/components/boletos/BoletoDialog";
 import { BoletosTable } from "@/components/boletos/BoletosTable";
@@ -33,15 +35,16 @@ const Boletos = () => {
   const { deleteAll, isDeleting } = useDeleteAllBoletos();
   const { userRole } = useAuth();
   const { toast } = useToast();
+  const { activeConfig, isImplemented } = useActiveBillingProvider();
   const hasSynced = useRef(false);
 
-  // Auto-sync on first page load
+  // Auto-sync on first page load (only if provider is implemented)
   useEffect(() => {
-    if (!hasSynced.current) {
+    if (!hasSynced.current && isImplemented) {
       hasSynced.current = true;
       syncStatus(true);
     }
-  }, []);
+  }, [isImplemented]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBoleto, setEditingBoleto] = useState<BoletoWithClient | null>(null);
@@ -202,21 +205,23 @@ const Boletos = () => {
             <Button
               variant="outline"
               onClick={() => syncStatus(false)}
-              disabled={syncing || importing}
+              disabled={syncing || importing || !isImplemented}
               className="gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Sincronizando..." : "Sincronizar Nibo"}
+              {syncing ? "Sincronizando..." : `Sincronizar ${activeConfig.label}`}
+              {!isImplemented && <Badge variant="secondary" className="text-xs ml-1">Em breve</Badge>}
             </Button>
 
             <Button
               variant="outline"
               onClick={() => setNiboDialogOpen(true)}
-              disabled={importing}
+              disabled={importing || !isImplemented}
               className="gap-2"
             >
               <CloudDownload className="w-4 h-4" />
-              {importing ? "Importando..." : "Importar Nibo"}
+              {importing ? "Importando..." : `Importar ${activeConfig.label}`}
+              {!isImplemented && <Badge variant="secondary" className="text-xs ml-1">Em breve</Badge>}
             </Button>
 
             <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">

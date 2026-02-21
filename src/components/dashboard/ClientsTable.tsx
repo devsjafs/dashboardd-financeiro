@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Client } from "@/types/client";
+import { useActiveBillingProvider } from "@/hooks/useActiveBillingProvider";
 import {
   Table,
   TableBody,
@@ -67,6 +68,7 @@ type SortField = "codigo" | "nomeFantasia" | "valorMensalidade" | "vencimento" |
 type SortDirection = "asc" | "desc";
 
 export function ClientsTable({ clients, onEdit, onDelete, niboStatus, niboResults }: ClientsTableProps) {
+  const { activeConfig } = useActiveBillingProvider();
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<SortField>("codigo");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -219,7 +221,7 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus, niboResult
                 onClick={() => handleSort("nibo")}
               >
                 <div className="flex items-center justify-center">
-                  Nibo
+                  {activeConfig.label}
                   {getSortIcon("nibo")}
                 </div>
               </TableHead>
@@ -297,7 +299,7 @@ export function ClientsTable({ clients, onEdit, onDelete, niboStatus, niboResult
                         </TooltipTrigger>
                         <TooltipContent>
                           {niboStatus && niboStatus[client.id] === "ok"
-                            ? "Boleto emitido no Nibo — clique para ver"
+                            ? `Boleto emitido no ${activeConfig.label} — clique para ver`
                             : niboStatus && niboStatus[client.id] === "parcial"
                             ? "Parcialmente emitido — clique para ver"
                             : niboStatus && niboStatus[client.id] === "pendente"
