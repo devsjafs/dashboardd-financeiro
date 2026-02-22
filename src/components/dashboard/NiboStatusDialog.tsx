@@ -64,7 +64,7 @@ export function NiboStatusDialog({ open, onOpenChange, clientName, result }: Nib
             <div className="space-y-1.5">
               {result.expectedBoletos.map((exp, i) => {
                 // Check if this expected boleto was found
-                const tolerance = Math.max(5, exp.valor * 0.01);
+                const tolerance = Math.max(5, exp.valor * 0.015);
                 const found = result.foundBoletos.find(
                   (fb) => Math.abs(fb.valor - exp.valor) <= tolerance
                 );
@@ -109,7 +109,7 @@ export function NiboStatusDialog({ open, onOpenChange, clientName, result }: Nib
                 {result.foundBoletos.map((fb, i) => {
                   const matched = result.expectedBoletos.some(
                     (exp) => {
-                      const tolerance = Math.max(5, exp.valor * 0.01);
+                      const tolerance = Math.max(5, exp.valor * 0.015);
                       return Math.abs(fb.valor - exp.valor) <= tolerance;
                     }
                   );
