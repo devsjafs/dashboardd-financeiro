@@ -196,7 +196,10 @@ Deno.serve(async (req) => {
       for (const expected of expectedBoletos) {
         for (let i = 0; i < foundBoletos.length; i++) {
           if (usedIndices.has(i)) continue;
-          if (Math.abs(foundBoletos[i].valor - expected.valor) <= 0.05) {
+          // Tolerance: up to 1% of expected value or R$5, whichever is greater
+          // (covers early-payment discounts like 1% on Inteligência boletos)
+          const tolerance = Math.max(5, expected.valor * 0.01);
+          if (Math.abs(foundBoletos[i].valor - expected.valor) <= tolerance) {
             matched++;
             usedIndices.add(i);
             break;
