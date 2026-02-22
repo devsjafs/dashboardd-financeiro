@@ -16,12 +16,15 @@ import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { useClients } from "@/hooks/useClients";
+import { useMemo } from "react";
 
 interface MenuItem {
   title: string;
   url: string;
   icon: any;
-  minRole: AppRole; // minimum role required
+  minRole: AppRole;
 }
 
 const roleLevel: Record<AppRole, number> = {
@@ -53,6 +56,17 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const { signOut, user, profile, userRole } = useAuth();
   const navigate = useNavigate();
+  const { clients } = useClients();
+
+  const reajusteVencidoCount = useMemo(() => {
+    return clients.filter(c => {
+      if (c.status !== "ativo" || !c.ultimoReajuste) return false;
+      const ultimo = new Date(c.ultimoReajuste + "T00:00:00");
+      const proximo = new Date(ultimo);
+      proximo.setMonth(proximo.getMonth() + (c.periodoReajusteMeses || 12));
+      return proximo < new Date();
+    }).length;
+  }, [clients]);
 
   const initial = getInitial(profile, user?.email ?? undefined);
   const currentLevel = roleLevel[userRole || "viewer"];
@@ -80,6 +94,11 @@ export function AppSidebar() {
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {item.title === "Reajustes" && reajusteVencidoCount > 0 && !collapsed && (
+                        <Badge variant="destructive" className="ml-auto h-5 px-1.5 text-[10px]">
+                          {reajusteVencidoCount}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

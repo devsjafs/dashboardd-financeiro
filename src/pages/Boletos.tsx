@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, DollarSign, CheckCircle2, XCircle, Upload, Download, CloudDownload, RefreshCw, MoreHorizontal, Trash2 } from "lucide-react";
 import { useBoletos } from "@/hooks/useBoletos";
-import { useNiboImport } from "@/hooks/useNiboImport";
-import { useNiboSync } from "@/hooks/useNiboSync";
+import { useBillingImport } from "@/hooks/useBillingImport";
+import { useBillingSync } from "@/hooks/useBillingSync";
 import { useDeleteAllBoletos } from "@/hooks/useDeleteAllBoletos";
 import { useActiveBillingProvider } from "@/hooks/useActiveBillingProvider";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +16,7 @@ import { BoletoDeleteAllDialog } from "@/components/boletos/BoletoDeleteAllDialo
 import { BoletoFormData, BoletoWithClient } from "@/types/boleto";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ImportDialog } from "@/components/dashboard/ImportDialog";
-import { NiboImportDialog } from "@/components/boletos/NiboImportDialog";
+import { BillingImportDialog } from "@/components/boletos/BillingImportDialog";
 import { exportBoletosToXLSX, importBoletosFromXLSX, downloadBoletoTemplate } from "@/utils/boletoExportImport";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,12 +30,12 @@ import {
 
 const Boletos = () => {
   const { boletos, isLoading, createBoleto, updateBoleto, deleteBoleto, markAsPaid, markAsUnpaid } = useBoletos();
-  const { importFromNibo, importing, progress, importLog, clearLog } = useNiboImport();
-  const { syncStatus, syncing } = useNiboSync();
+  const { activeProvider, activeConfig, isImplemented } = useActiveBillingProvider();
+  const { importBoletos, importing, progress, importLog, clearLog } = useBillingImport(activeProvider);
+  const { syncStatus, syncing } = useBillingSync(activeProvider);
   const { deleteAll, isDeleting } = useDeleteAllBoletos();
   const { userRole } = useAuth();
   const { toast } = useToast();
-  const { activeConfig, isImplemented } = useActiveBillingProvider();
   const hasSynced = useRef(false);
 
   // Auto-sync on first page load (only if provider is implemented)
@@ -59,7 +59,7 @@ const Boletos = () => {
   };
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [niboDialogOpen, setNiboDialogOpen] = useState(false);
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false);
 
   const canDeleteAll = userRole === "owner" || userRole === "admin";
 
@@ -205,23 +205,21 @@ const Boletos = () => {
             <Button
               variant="outline"
               onClick={() => syncStatus(false)}
-              disabled={syncing || importing || !isImplemented}
+              disabled={syncing || importing}
               className="gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Sincronizando..." : `Sincronizar ${activeConfig.label}`}
-              {!isImplemented && <Badge variant="secondary" className="text-xs ml-1">Em breve</Badge>}
             </Button>
 
             <Button
               variant="outline"
-              onClick={() => setNiboDialogOpen(true)}
-              disabled={importing || !isImplemented}
+              onClick={() => setBillingDialogOpen(true)}
+              disabled={importing}
               className="gap-2"
             >
               <CloudDownload className="w-4 h-4" />
               {importing ? "Importando..." : `Importar ${activeConfig.label}`}
-              {!isImplemented && <Badge variant="secondary" className="text-xs ml-1">Em breve</Badge>}
             </Button>
 
             <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
@@ -239,7 +237,6 @@ const Boletos = () => {
               Adicionar
             </Button>
 
-            {/* Advanced actions — only for owner/admin */}
             {canDeleteAll && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -301,14 +298,16 @@ const Boletos = () => {
           description="Baixe o modelo XLSX, preencha com os dados dos boletos e importe o arquivo."
         />
 
-        <NiboImportDialog
-          open={niboDialogOpen}
-          onOpenChange={setNiboDialogOpen}
-          onImport={(connId) => { importFromNibo(connId); }}
+        <BillingImportDialog
+          open={billingDialogOpen}
+          onOpenChange={setBillingDialogOpen}
+          onImport={(connId) => { importBoletos(connId); }}
           importing={importing}
           progress={progress}
           importLog={importLog}
           onClearLog={clearLog}
+          provider={activeProvider}
+          providerLabel={activeConfig.label}
         />
 
         <BoletoDeleteAllDialog

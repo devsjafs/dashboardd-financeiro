@@ -13,9 +13,9 @@ export interface ProviderConfig {
 
 export const BILLING_PROVIDERS: ProviderConfig[] = [
   { id: "nibo", label: "Nibo", implemented: true },
-  { id: "safe2pay", label: "Safe2Pay", implemented: false },
-  { id: "asaas", label: "Asaas", implemented: false },
-  { id: "contaazul", label: "Conta Azul", implemented: false },
+  { id: "safe2pay", label: "Safe2Pay", implemented: true },
+  { id: "asaas", label: "Asaas", implemented: true },
+  { id: "contaazul", label: "Conta Azul", implemented: true },
 ];
 
 export const useActiveBillingProvider = () => {

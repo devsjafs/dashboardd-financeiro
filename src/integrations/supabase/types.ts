@@ -668,6 +668,57 @@ export type Database = {
         }
         Relationships: []
       }
+      reajuste_history: {
+        Row: {
+          applied_at: string
+          applied_by: string
+          client_id: string
+          id: string
+          indice_usado: string
+          organization_id: string | null
+          percentual_aplicado: number
+          valor_anterior: Json
+          valor_novo: Json
+        }
+        Insert: {
+          applied_at?: string
+          applied_by: string
+          client_id: string
+          id?: string
+          indice_usado: string
+          organization_id?: string | null
+          percentual_aplicado: number
+          valor_anterior?: Json
+          valor_novo?: Json
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string
+          client_id?: string
+          id?: string
+          indice_usado?: string
+          organization_id?: string | null
+          percentual_aplicado?: number
+          valor_anterior?: Json
+          valor_novo?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reajuste_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reajuste_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           created_at: string
