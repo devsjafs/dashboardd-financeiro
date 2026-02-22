@@ -64,10 +64,13 @@ export function NiboStatusDialog({ open, onOpenChange, clientName, result }: Nib
             <div className="space-y-1.5">
               {result.expectedBoletos.map((exp, i) => {
                 // Check if this expected boleto was found
-                const tolerance = Math.max(5, exp.valor * 0.015);
+                const tolerance = Math.max(5, exp.valor * 0.025);
                 const found = result.foundBoletos.find(
                   (fb) => Math.abs(fb.valor - exp.valor) <= tolerance
                 );
+                const diff = found ? found.valor - exp.valor : 0;
+                const hasJuros = found && diff > 1;
+                const hasDesconto = found && diff < -1;
                 return (
                   <div
                     key={i}
@@ -86,9 +89,21 @@ export function NiboStatusDialog({ open, onOpenChange, clientName, result }: Nib
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold">{formatCurrency(exp.valor)}</span>
                       {found ? (
-                        <span className="text-xs text-emerald-500">
-                          Venc. {formatDate(found.dueDate)}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs text-emerald-500">
+                            Venc. {formatDate(found.dueDate)}
+                          </span>
+                          {hasJuros && (
+                            <span className="text-xs text-amber-500">
+                              Juros: +{formatCurrency(diff)} ({formatCurrency(found.valor)})
+                            </span>
+                          )}
+                          {hasDesconto && (
+                            <span className="text-xs text-blue-400">
+                              Desconto: {formatCurrency(diff)} ({formatCurrency(found.valor)})
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-destructive">Não encontrado</span>
                       )}
@@ -109,7 +124,7 @@ export function NiboStatusDialog({ open, onOpenChange, clientName, result }: Nib
                 {result.foundBoletos.map((fb, i) => {
                   const matched = result.expectedBoletos.some(
                     (exp) => {
-                      const tolerance = Math.max(5, exp.valor * 0.015);
+                      const tolerance = Math.max(5, exp.valor * 0.025);
                       return Math.abs(fb.valor - exp.valor) <= tolerance;
                     }
                   );
